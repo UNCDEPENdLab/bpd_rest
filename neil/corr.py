@@ -64,7 +64,7 @@ def pretty_print_2d(arr,vsize = 10,hsize=10, integer = False):
                 continue
             if integer:
                 print "{:5d}".format(arr[i][j]),
-            else:
+            else: #float
                 print "{:5.3f}".format(arr[i][j]),
         print
 
@@ -173,19 +173,16 @@ for i in range(0,len(membership)):
 f1 = open('power_communities.txt','r')
 power = [int(f.strip()) for f in f1.read().split('\n') if len(f)>0]
 f1.close()
-print ig.clustering.compare_communities(power,membership,method="nmi") # nmi, vi, etc
-
-
-f = open('ROI_nodes.node','r')
-roi = [line.strip().split('\t') for line in f]
-f.close()
-
-for i in range(0,len(membership)):
-    roi[i][3] = membership[i]
-
+print "NMI score: ",ig.clustering.compare_communities(power,membership,method="nmi") # nmi, vi, etc
 
 
 # write ROI node file with community membership data to be opened in BrainNet Viewer
+f = open('ROI_nodes.node','r')
+roi = [line.strip().split('\t') for line in f]
+f.close()
+for i in range(0,len(membership)):
+    roi[i][3] = membership[i]
+
 f = open('my_ROI.node','w')
 for i in range(0,len(roi)):
     for item in roi[i]:
