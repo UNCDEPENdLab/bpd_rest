@@ -70,17 +70,22 @@ def pretty_print_2d(arr,vsize = 10,hsize=10, integer = False):
 
 mat = [] # will be mat[i][x][y] where i is trial, x and y represent the correlation adjacency matrix for that patient on the Power 264 node setup
 summed = [] # summed[x][y] represents averaged adjacency matrix for all trials
+mask = []
 
 """
 Loads each patient into the mat array
 """
 for i in patients:
     pat = []
+    patmask = []
     f = open(folder+'/'+i+'/'+filename,'r')
     for line in f:
-        l = [float(j.replace("NA","0")) for j in line.strip().split()]
+        l = [float(j.replace("NA","-42")) for j in line.strip().split()] # -42 is a magic number signalling NA, needs to be dealt with when accessing the data later; can either be detected with <-41 (there should be no points less than that in the actual data, but this is somewhat poor form), or via the variable mask (set on next line)
+        ml = [True if j=="NA" else False for j in line.strip().split()]
         pat.append(l)
+        patmask.append(ml)
     mat.append(pat)
+    mask.append(patmask)
 
 #print len(mat), len(mat[0]), len(mat[0][0])
 
@@ -91,15 +96,19 @@ for x in range(0,len(mat[0])):
     summed.append([])
     for y in range(0,len(mat[0][x])):
         summed[x].append(0)
+        count = 0
         for i in range(0,len(mat)):
+            if mask[i][x][y]: # removes all items marked NA on original adjacency matrix
+                continue
             summed[x][y] += mat[i][x][y]
-        summed[x][y]/=len(mat)
+            count += 1
+        summed[x][y]/=count
         if x == y:
             summed[x][y] = 0 # Graph should not have loops
         #print "{0:.2f} ".format(summed[x][y]),
     #print
 
-draw_corr_matrix(summed)
+#draw_corr_matrix(summed)
 
 """
 Creates igraph Graph by putting all correlation data in a one dimensional matrix and taking only highest percentile edges (tie density)
