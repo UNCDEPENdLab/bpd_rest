@@ -145,72 +145,75 @@ def create_graph(avg,percentile,weighted=True):
                     G.add_edge(i,j)
     return G
 
-patients = control
-folder = control_folder
-mat = [] # will be mat[i][x][y] where i is trial, x and y represent the correlation adjacency matrix for that patient on the Power 264 node setup
-summed = [] # summed[x][y] represents averaged adjacency matrix for all trials
-mask = []
-mat,mask = load_patients([folder+'/'+i+'/'+filename for i in patients])
-summed = average_patients(mat,mask)
-#draw_corr_matrix(summed)
-G = create_graph(summed,95,weighted=True)
+if __name__ == '__main__':
+    patients = control
+    folder = control_folder
+    mat = [] # will be mat[i][x][y] where i is trial, x and y represent the correlation adjacency matrix for that patient on the Power 264 node setup
+    summed = [] # summed[x][y] represents averaged adjacency matrix for all trials
+    mask = []
+    mat,mask = load_patients([folder+'/'+i+'/'+filename for i in patients])
+    summed = average_patients(mat,mask)
+    #draw_corr_matrix(summed)
+    G = create_graph(summed,95,weighted=True)
 
-#ig.summary(G)
-#print G.degree(range(0,10))
-#print G.betweenness(range(0,10))
-#print G.edge_betweenness()[0:10]
+    #ig.summary(G)
+    #print G.degree(range(0,10))
+    #print G.betweenness(range(0,10))
+    #print G.edge_betweenness()[0:10]
 
-"""
-Community detection algorithms
-can use optimal [too slow for 100+ node graphs, did not terminate after 45 min on 264 node], fastgreedy, infomap, and others
-"""
-#mod = G.community_optimal_modularity() # TOO SLOW
-#membership = mod.membership
-#dendrogram = G.community_fastgreedy()
-#clusters = dendrogram.as_clustering()
-#membership = clusters.membership
-clusters = G.community_infomap()
-membership = clusters.membership
-print clusters
-#print membership
-# ig.plot(cluster, vertex_label=range(0,len(summed)),vertex_label_size=8,bbox=[1000,1000]) # PLOT community clusters
+    """
+    Community detection algorithms
+    can use optimal [too slow for 100+ node graphs, did not terminate after 45 min on 264 node], fastgreedy, infomap, and others
+    """
+    #mod = G.community_optimal_modularity() # TOO SLOW
+    #membership = mod.membership
+    #dendrogram = G.community_fastgreedy()
+    #clusters = dendrogram.as_clustering()
+    #membership = clusters.membership
+    clusters = G.community_infomap()
+    membership = clusters.membership
+    print clusters
+    #print membership
+    # ig.plot(cluster, vertex_label=range(0,len(summed)),vertex_label_size=8,bbox=[1000,1000]) # PLOT community clusters
 
-membership2d = []
-for i in range(0,len(membership)):
-    membership2d.append([])
-    for j in range(0,len(membership)):
-        if membership[i] == membership[j]:
-            membership2d[i].append(membership[i])
-        else:
-            membership2d[i].append(-1)
-draw_corr_matrix(membership2d)
-
-
-#Community comparators
-f1 = open('power_communities.txt','r')
-power = [int(f.strip()) for f in f1.read().split('\n') if len(f)>0]
-f1.close()
-print "NMI score: ",ig.clustering.compare_communities(power,membership,method="nmi") # nmi, vi, etc
+    """
+    membership2d = []
+    for i in range(0,len(membership)):
+        membership2d.append([])
+        for j in range(0,len(membership)):
+            if membership[i] == membership[j]:
+                membership2d[i].append(membership[i])
+            else:
+                membership2d[i].append(-1)
+    #draw_corr_matrix(membership2d)
+    """
 
 
-# write ROI node file with community membership data to be opened in BrainNet Viewer
-f = open('ROI_nodes.node','r')
-roi = [line.strip().split('\t') for line in f]
-f.close()
-for i in range(0,len(membership)):
-    roi[i][3] = membership[i]
-
-f = open('my_ROI.node','w')
-for i in range(0,len(roi)):
-    for item in roi[i]:
-        f.write(str(item)+'\t')
-    f.write('\n')
-f.close()
+    #Community comparators
+    f1 = open('power_communities.txt','r')
+    power = [int(f.strip()) for f in f1.read().split('\n') if len(f)>0]
+    f1.close()
+    print "NMI score: ",ig.clustering.compare_communities(power,membership,method="nmi") # nmi, vi, etc
 
 
-#sorts the matrix by membership to more easily identify communities; in theory
-#the Power et al ROIs were selected and ordered such that large communities are
-#already sequential
+    # write ROI node file with community membership data to be opened in BrainNet Viewer
+    f = open('ROI_nodes.node','r')
+    roi = [line.strip().split('\t') for line in f]
+    f.close()
+    for i in range(0,len(membership)):
+        roi[i][3] = membership[i]
 
-#summed_sorted = sort2d(summed,membership)
-#draw_corr_matrix(summed_sorted)
+    f = open('my_ROI.node','w')
+    for i in range(0,len(roi)):
+        for item in roi[i]:
+            f.write(str(item)+'\t')
+        f.write('\n')
+    f.close()
+
+
+    #sorts the matrix by membership to more easily identify communities; in theory
+    #the Power et al ROIs were selected and ordered such that large communities are
+    #already sequential
+
+    #summed_sorted = sort2d(summed,membership)
+    #draw_corr_matrix(summed_sorted)
