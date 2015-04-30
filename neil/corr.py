@@ -2,6 +2,7 @@
 import numpy as np
 import igraph as ig
 import matplotlib.pyplot as plt
+import copy
 import pylab
 import mni
 import bct
@@ -130,15 +131,16 @@ def average_patients(mat,mask):
 
 
 """
-Creates igraph Graph by putting all correlation data in a one dimensional
+Creates sparsified igraph Graph by putting all correlation data in a one dimensional
 matrix and taking only highest percentile edges (tie density). Requires the
 correlation matrix (recommended 0'd diagonal), percentile for cutoff (100 minus
 tie-density), and takes optional argument to include weighted edges or binary.
-Returns igraph Graph object
+Returns igraph Graph object and numpy array representing the sparsified matrix
 """
 def create_graph(avg,percentile,weighted=True):
     G = ig.Graph()
     G.add_vertices(len(avg))
+    sparsed = copy.deepcopy(avg)
     corr_list = []
     for i in range(0,len(avg)):
         for j in range(0,i):
@@ -155,48 +157,63 @@ def create_graph(avg,percentile,weighted=True):
                     G.add_edge(i,j,weight=avg[i][j])
                 else:
                     G.add_edge(i,j)
-    return G
+                    sparsed[i][j] = 1
+                    sparsed[j][i] = 1
+            else:
+                sparsed[i][j] = 0
+                sparsed[j][i] = 0
+    return G,np.array(sparsed)
 
 if __name__ == '__main__':
-    patients = control
-    folder = control_folder
     #patients = population
     #folder = population_folder
-    mat = [] # will be mat[i][x][y] where i is trial, x and y represent the correlation adjacency matrix for that patient on the Power 264 node setup
-    summed = [] # summed[x][y] represents averaged adjacency matrix for all trials
-    mask = []
-    mat,mask = load_patients([folder+'/'+i+'/'+filename for i in patients])
-    summed = average_patients(mat,mask)
-    #draw_corr_matrix(summed)
-    G = create_graph(summed,95,weighted=True)
+    mat_control = [] # will be mat[i][x][y] where i is trial, x and y represent the correlation adjacency matrix for that patient on the Power 264 node setup
+    mask_control = []
+    mat_control,mask_control = load_patients([control_folder+'/'+i+'/'+filename for i in control])
+    adj_control = np.array(average_patients(mat_control,mask_control))
+    G_control,sparsed_adj_control = create_graph(adj_control,90,weighted=False)
 
-    #ig.summary(G)
-    #print G.degree(range(0,10))
-    #print G.betweenness(range(0,10))
-    #print G.edge_betweenness()[0:10]
+    mat_population = [] # will be mat[i][x][y] where i is trial, x and y represent the correlation adjacency matrix for that patient on the Power 264 node setup
+    mask_population = []
+    adj_population = np.array([]) 
+    mat_population,mask_population = load_patients([population_folder+'/'+i+'/'+filename for i in population])
+    adj_population = np.array(average_patients(mat_population,mask_population)) # adj_population[x][y] represents averaged adjacency matrix for all trials
+    G_population,sparsed_adj_population = create_graph(adj_population,90,weighted=False)
 
+    #ig.summary(G_control)
+    #print G_control.degree(range(0,10))
+    #print G_control.betweenness(range(0,10))
+    #print G_control.edge_betweenness()[0:10]
+
+    draw_corr_matrix(adj_control)
+    draw_corr_matrix(adj_population)
     """
     Community detection algorithms
     can use optimal [too slow for 100+ node graphs, did not terminate after 45 min on 264 node], fastgreedy, infomap, and others
     """
-    #mod = G.community_optimal_modularity() # TOO SLOW
+    #mod = G_control.community_optimal_modularity() # TOO SLOW
     #membership = mod.membership
-    #dendrogram = G.community_fastgreedy()
+    #dendrogram = G_control.community_fastgreedy()
     #clusters = dendrogram.as_clustering()
     #membership = clusters.membership
-    clusters = G.community_infomap()
-    membership = clusters.membership
-    print clusters
-    #print membership
-    # ig.plot(cluster, vertex_label=range(0,len(summed)),vertex_label_size=8,bbox=[1000,1000]) # PLOT community clusters
+    clusters_control = G_control.community_infomap()
+    membership_control = clusters_control.membership
+    print clusters_control
+
+    clusters_population = G_population.community_infomap()
+    membership_population = clusters_population.membership
+    print clusters_population
+
+    #print membership_control
+    # ig.plot(cluster, vertex_label=range(0,len(adj_control)),vertex_label_size=8,bbox=[1000,1000]) # PLOT community clusters
 
     """
     membership2d = []
-    for i in range(0,len(membership)):
+    for i in range(0,len(membership_control)):
         membership2d.append([])
-        for j in range(0,len(membership)):
-            if membership[i] == membership[j]:
-                membership2d[i].append(membership[i])
+        for j in range(0,len(membership_control)):
+            if membership_control[i] == membership_control[j]:
+                membership2d[i].append(membership_control[i])
             else:
                 membership2d[i].append(-1)
     #draw_corr_matrix(membership2d)
@@ -207,21 +224,31 @@ if __name__ == '__main__':
     f1 = open('power_communities.txt','r')
     power = [int(f.strip()) for f in f1.read().split('\n') if len(f)>0]
     f1.close()
-    print "NMI score: ",ig.clustering.compare_communities(power,membership,method="nmi") # nmi, vi, etc
+    print "NMI score (control to Power): ",ig.clustering.compare_communities(power,membership_control,method="nmi") # nmi, vi, etc
+    print "NMI score (population to Power): ",ig.clustering.compare_communities(power,membership_population,method="nmi") # nmi, vi, etc
+    print "NMI score (population to control): ",ig.clustering.compare_communities(membership_population,membership_control,method="nmi") # nmi, vi, etc
 
 
     f = open('ROI_nodes.node','r')
     roi = [line.strip().split('\t') for line in f]
     f.close()
-    for i in range(0,len(membership)):
-        roi[i][3] = membership[i]
+    for i in range(0,len(membership_control)):
+        roi[i][3] = membership_control[i]
     poi_index,dist = mni.find_closest(mni.common_roi['amygdala'],roi)
     print roi[poi_index]
 
-    adj = np.array(summed)
-    print "PageRank",bct.bct.pagerank_centrality(adj,0.85)[poi_index]
-    print "Weighted betweenness centrality",bct.bct.betweenness_wei(adj)[poi_index]
-    print "Weighted clustering coefficient",bct.bct.clustering_coef_wd(adj)[poi_index]
+    
+    print "PageRank (c): ",bct.bct.pagerank_centrality(adj_control,0.85)[poi_index]
+    print "PageRank (p): ",bct.bct.pagerank_centrality(adj_population,0.85)[poi_index]
+    print "Weighted betweenness centrality (c): ",bct.bct.betweenness_wei(adj_control)[poi_index]
+    print "Weighted betweenness centrality (p): ",bct.bct.betweenness_wei(adj_population)[poi_index]
+    print "Binary betweenness centrality (c): ",bct.bct.betweenness_bin(sparsed_adj_control)[poi_index]
+    print "Binary betweenness centrality (p): ",bct.bct.betweenness_bin(sparsed_adj_population)[poi_index]
+    print "Weighted clustering coefficient (c): ",bct.bct.clustering_coef_wu(adj_control)[poi_index]
+    print "Weighted clustering coefficient (p): ",bct.bct.clustering_coef_wu(adj_population)[poi_index]
+    print "Binary clustering coefficient (c): ",bct.bct.clustering_coef_bu(sparsed_adj_control)[poi_index]
+    print "Binary clustering coefficient (p): ",bct.bct.clustering_coef_bu(sparsed_adj_population)[poi_index]
+
     """
     # write ROI node file with community membership data to be opened in BrainNet Viewer
 
@@ -233,10 +260,9 @@ if __name__ == '__main__':
     f.close()
     """
 
-
     #sorts the matrix by membership to more easily identify communities; in theory
     #the Power et al ROIs were selected and ordered such that large communities are
     #already sequential
 
-    #summed_sorted = sort2d(summed,membership)
-    #draw_corr_matrix(summed_sorted)
+    #adj_control_sorted = sort2d(adj_control,membership_control)
+    #draw_corr_matrix(adj_control_sorted)
