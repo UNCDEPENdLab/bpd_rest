@@ -4,6 +4,7 @@ import igraph as ig
 import matplotlib.pyplot as plt
 import pylab
 import mni
+import bct
 
 base_folder = '/Volumes/Serena/Raj/Preprocess_Rest'
 
@@ -159,6 +160,8 @@ def create_graph(avg,percentile,weighted=True):
 if __name__ == '__main__':
     patients = control
     folder = control_folder
+    #patients = population
+    #folder = population_folder
     mat = [] # will be mat[i][x][y] where i is trial, x and y represent the correlation adjacency matrix for that patient on the Power 264 node setup
     summed = [] # summed[x][y] represents averaged adjacency matrix for all trials
     mask = []
@@ -207,12 +210,20 @@ if __name__ == '__main__':
     print "NMI score: ",ig.clustering.compare_communities(power,membership,method="nmi") # nmi, vi, etc
 
 
-    # write ROI node file with community membership data to be opened in BrainNet Viewer
     f = open('ROI_nodes.node','r')
     roi = [line.strip().split('\t') for line in f]
     f.close()
     for i in range(0,len(membership)):
         roi[i][3] = membership[i]
+    poi_index,dist = mni.find_closest(mni.common_roi['amygdala'],roi)
+    print roi[poi_index]
+
+    adj = np.array(summed)
+    print "PageRank",bct.bct.pagerank_centrality(adj,0.85)[poi_index]
+    print "Weighted betweenness centrality",bct.bct.betweenness_wei(adj)[poi_index]
+    print "Weighted clustering coefficient",bct.bct.clustering_coef_wd(adj)[poi_index]
+    """
+    # write ROI node file with community membership data to be opened in BrainNet Viewer
 
     f = open('my_ROI.node','w')
     for i in range(0,len(roi)):
@@ -220,6 +231,7 @@ if __name__ == '__main__':
             f.write(str(item)+'\t')
         f.write('\n')
     f.close()
+    """
 
 
     #sorts the matrix by membership to more easily identify communities; in theory
