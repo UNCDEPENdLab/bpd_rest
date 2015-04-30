@@ -68,7 +68,7 @@ def pretty_print_2d(arr,vsize = 10,hsize=10, integer = False):
 
 
 """
-Loads each patient into the mat array (mat[i][x][y] where i is the patient, x and y represent correlation adjacency matrix for that patient (indexed by the Power et all 2011 264 node setup). Also creates a mask to indicate specific nodes where the correlation could not be calculated
+Loads each patient into the mat array (mat[x][y][i] where i is the patient, x and y represent correlation adjacency matrix for that patient (indexed by the Power et all 2011 264 node setup). Also creates a mask to indicate specific nodes where the correlation could not be calculated
 Returns: matrix[][][],mask[][][]
 """
 def load_patients(patient_list):
@@ -77,15 +77,24 @@ def load_patients(patient_list):
     for i in patient_list:
         pat = []
         patmask = []
-        #f = open(folder+'/'+i+'/'+filename,'r')
         f = open(i,'r')
         for line in f:
             l = [float(j.replace("NA","-42")) for j in line.strip().split()] # -42 is a magic number signalling NA, needs to be dealt with when accessing the data later; can either be detected with <-41 (there should be no points less than that in the actual data, but this is somewhat poor form), or via the variable mask (set on next line)
             ml = [True if j=="NA" else False for j in line.strip().split()]
             pat.append(l)
             patmask.append(ml)
-        mat.append(pat)
-        mask.append(patmask)
+        f.close()
+        if len(mat) == 0:
+            for x in range(0,len(pat)):
+                mat.append([])
+                mask.append([])
+                for y in range(0,len(pat[x])):
+                    mat[x].append([])
+                    mask[x].append([])
+        for x in range(0,len(pat)):
+            for y in range(0,len(pat[x])):
+                mat[x][y].append(pat[x][y])
+                mask[x][y].append(patmask[x][y])
     return mat,mask
 
 """
@@ -100,15 +109,15 @@ point
 """
 def average_patients(mat,mask):
     avg = []
-    for x in range(0,len(mat[0])):
+    for x in range(0,len(mat)):
         avg.append([])
-        for y in range(0,len(mat[0][x])):
+        for y in range(0,len(mat[x])):
             avg[x].append(0)
             count = 0
-            for i in range(0,len(mat)):
-                if mask[i][x][y]: # removes all items marked NA on original adjacency matrix
+            for i in range(0,len(mat[x][y])):
+                if mask[x][y][i]: # removes all items marked NA on original adjacency matrix
                     continue
-                avg[x][y] += mat[i][x][y]
+                avg[x][y] += mat[x][y][i]
                 count += 1
             avg[x][y]/=count # WILL throw exception if count = 0 due to all patients with masked data at single data point
             if x == y:
