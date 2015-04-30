@@ -3,6 +3,7 @@ import numpy as np
 import igraph as ig
 import matplotlib.pyplot as plt
 import pylab
+import mni
 
 base_folder = '/Volumes/Serena/Raj/Preprocess_Rest'
 
@@ -79,7 +80,8 @@ def load_patients(patient_list):
         patmask = []
         f = open(i,'r')
         for line in f:
-            l = [float(j.replace("NA","-42")) for j in line.strip().split()] # -42 is a magic number signalling NA, needs to be dealt with when accessing the data later; can either be detected with <-41 (there should be no points less than that in the actual data, but this is somewhat poor form), or via the variable mask (set on next line)
+            # TODO: Come up with suitable way to replace NA when the raw matrix is to be used in NBS testing
+            l = [float(j.replace("NA","0")) for j in line.strip().split()] # 0 is a magic number signalling NA, needs to be dealt with when accessing the data later via the variable mask (set on next line); prev versions used arbitrary -42, but for NBS data processing 0 is a signal to exclude data from analysis so will be used
             ml = [True if j=="NA" else False for j in line.strip().split()]
             pat.append(l)
             patmask.append(ml)
