@@ -235,11 +235,12 @@ if __name__ == '__main__':
 
     #pretty_print_2d(mat_control[:,:,0])
     pagerank_control = [bct.bct.pagerank_centrality(mat_control[:,:,i],0.85)[poi_index] for i in range(0,len(mat_control[poi_index][poi_index]))]
-    print pagerank_control
     pagerank_population = [bct.bct.pagerank_centrality(mat_population[:,:,i],0.85)[poi_index] for i in range(0,len(mat_population[poi_index][poi_index]))]
-    print pagerank_population
+    clustering_control = [bct.bct.clustering_coef_wu(mat_control[:,:,i])[poi_index] for i in range(0,len(mat_control[poi_index][poi_index]))]
+    clustering_population = [bct.bct.clustering_coef_wu(mat_population[:,:,i])[poi_index] for i in range(0,len(mat_population[poi_index][poi_index]))]
 
     print stats.ttest_ind(pagerank_control,pagerank_population)
+    print stats.ttest_ind(clustering_control,clustering_population)
     """
     #sorts the matrix by membership to more easily identify communities; in theory
     #the Power et al ROIs were selected and ordered such that large communities are
