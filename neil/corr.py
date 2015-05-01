@@ -6,6 +6,7 @@ import copy
 import pylab
 import mni
 import bct
+from scipy import stats
 
 base_folder = '/Volumes/Serena/Raj/Preprocess_Rest'
 
@@ -99,7 +100,7 @@ def load_patients(patient_list):
             for y in range(0,len(pat[x])):
                 mat[x][y].append(pat[x][y])
                 mask[x][y].append(patmask[x][y])
-    return mat,mask
+    return np.array(mat),np.array(mask)
 
 """
 Creates an averaged 2D array over all patients, zeroes the diagonal. Requires
@@ -126,7 +127,7 @@ def average_patients(mat,mask):
             avg[x][y]/=count # WILL throw exception if count = 0 due to all patients with masked data at single data point
             if x == y:
                 avg[x][y] = 0 # Graph should not have loops
-    return avg
+    return np.array(avg)
 
 
 
@@ -167,17 +168,12 @@ def create_graph(avg,percentile,weighted=True):
 if __name__ == '__main__':
     #patients = population
     #folder = population_folder
-    mat_control = [] # will be mat[i][x][y] where i is trial, x and y represent the correlation adjacency matrix for that patient on the Power 264 node setup
-    mask_control = []
-    mat_control,mask_control = load_patients([control_folder+'/'+i+'/'+filename for i in control])
-    adj_control = np.array(average_patients(mat_control,mask_control))
+    mat_control,mask_control = load_patients([control_folder+'/'+i+'/'+filename for i in control]) # will be mat[x][y][i] where i is trial, x and y represent the correlation adjacency matrix for that patient on the Power 264 node setup
+    adj_control = average_patients(mat_control,mask_control)
     G_control,sparsed_adj_control = create_graph(adj_control,90,weighted=False)
 
-    mat_population = [] # will be mat[i][x][y] where i is trial, x and y represent the correlation adjacency matrix for that patient on the Power 264 node setup
-    mask_population = []
-    adj_population = np.array([]) 
-    mat_population,mask_population = load_patients([population_folder+'/'+i+'/'+filename for i in population])
-    adj_population = np.array(average_patients(mat_population,mask_population)) # adj_population[x][y] represents averaged adjacency matrix for all trials
+    mat_population,mask_population = load_patients([population_folder+'/'+i+'/'+filename for i in population]) # will be mat[x][y][i] where i is trial, x and y represent the correlation adjacency matrix for that patient on the Power 264 node setup
+    adj_population = average_patients(mat_population,mask_population) # adj_population[x][y] represents averaged adjacency matrix for all trials
     G_population,sparsed_adj_population = create_graph(adj_population,90,weighted=False)
 
     #ig.summary(G_control)
@@ -185,8 +181,8 @@ if __name__ == '__main__':
     #print G_control.betweenness(range(0,10))
     #print G_control.edge_betweenness()[0:10]
 
-    draw_corr_matrix(adj_control)
-    draw_corr_matrix(adj_population)
+    #draw_corr_matrix(adj_control)
+    #draw_corr_matrix(adj_population)
     """
     Community detection algorithms
     can use optimal [too slow for 100+ node graphs, did not terminate after 45 min on 264 node], fastgreedy, infomap, and others
@@ -198,26 +194,15 @@ if __name__ == '__main__':
     #membership = clusters.membership
     clusters_control = G_control.community_infomap()
     membership_control = clusters_control.membership
-    print clusters_control
+    #print clusters_control
 
     clusters_population = G_population.community_infomap()
     membership_population = clusters_population.membership
-    print clusters_population
+    #print clusters_population
 
     #print membership_control
     # ig.plot(cluster, vertex_label=range(0,len(adj_control)),vertex_label_size=8,bbox=[1000,1000]) # PLOT community clusters
 
-    """
-    membership2d = []
-    for i in range(0,len(membership_control)):
-        membership2d.append([])
-        for j in range(0,len(membership_control)):
-            if membership_control[i] == membership_control[j]:
-                membership2d[i].append(membership_control[i])
-            else:
-                membership2d[i].append(-1)
-    #draw_corr_matrix(membership2d)
-    """
 
 
     #Community comparators
@@ -235,19 +220,46 @@ if __name__ == '__main__':
     for i in range(0,len(membership_control)):
         roi[i][3] = membership_control[i]
     poi_index,dist = mni.find_closest(mni.common_roi['amygdala'],roi)
-    print roi[poi_index]
 
     
     print "PageRank (c): ",bct.bct.pagerank_centrality(adj_control,0.85)[poi_index]
     print "PageRank (p): ",bct.bct.pagerank_centrality(adj_population,0.85)[poi_index]
-    print "Weighted betweenness centrality (c): ",bct.bct.betweenness_wei(adj_control)[poi_index]
-    print "Weighted betweenness centrality (p): ",bct.bct.betweenness_wei(adj_population)[poi_index]
-    print "Binary betweenness centrality (c): ",bct.bct.betweenness_bin(sparsed_adj_control)[poi_index]
-    print "Binary betweenness centrality (p): ",bct.bct.betweenness_bin(sparsed_adj_population)[poi_index]
+    #print "Weighted betweenness centrality (c): ",bct.bct.betweenness_wei(adj_control)[poi_index]
+    #print "Weighted betweenness centrality (p): ",bct.bct.betweenness_wei(adj_population)[poi_index]
+    #print "Binary betweenness centrality (c): ",bct.bct.betweenness_bin(sparsed_adj_control)[poi_index]
+    #print "Binary betweenness centrality (p): ",bct.bct.betweenness_bin(sparsed_adj_population)[poi_index]
     print "Weighted clustering coefficient (c): ",bct.bct.clustering_coef_wu(adj_control)[poi_index]
     print "Weighted clustering coefficient (p): ",bct.bct.clustering_coef_wu(adj_population)[poi_index]
-    print "Binary clustering coefficient (c): ",bct.bct.clustering_coef_bu(sparsed_adj_control)[poi_index]
-    print "Binary clustering coefficient (p): ",bct.bct.clustering_coef_bu(sparsed_adj_population)[poi_index]
+    #print "Binary clustering coefficient (c): ",bct.bct.clustering_coef_bu(sparsed_adj_control)[poi_index]
+    #print "Binary clustering coefficient (p): ",bct.bct.clustering_coef_bu(sparsed_adj_population)[poi_index]
+
+    #pretty_print_2d(mat_control[:,:,0])
+    pagerank_control = [bct.bct.pagerank_centrality(mat_control[:,:,i],0.85)[poi_index] for i in range(0,len(mat_control[poi_index][poi_index]))]
+    print pagerank_control
+    pagerank_population = [bct.bct.pagerank_centrality(mat_population[:,:,i],0.85)[poi_index] for i in range(0,len(mat_population[poi_index][poi_index]))]
+    print pagerank_population
+
+    print stats.ttest_ind(pagerank_control,pagerank_population)
+    """
+    #sorts the matrix by membership to more easily identify communities; in theory
+    #the Power et al ROIs were selected and ordered such that large communities are
+    #already sequential
+
+    adj_control_sorted = sort2d(adj_control,membership_control)
+    draw_corr_matrix(adj_control_sorted)
+    """
+
+    """
+    membership2d = []
+    for i in range(0,len(membership_control)):
+        membership2d.append([])
+        for j in range(0,len(membership_control)):
+            if membership_control[i] == membership_control[j]:
+                membership2d[i].append(membership_control[i])
+            else:
+                membership2d[i].append(-1)
+    #draw_corr_matrix(membership2d)
+    """
 
     """
     # write ROI node file with community membership data to be opened in BrainNet Viewer
@@ -259,10 +271,3 @@ if __name__ == '__main__':
         f.write('\n')
     f.close()
     """
-
-    #sorts the matrix by membership to more easily identify communities; in theory
-    #the Power et al ROIs were selected and ordered such that large communities are
-    #already sequential
-
-    #adj_control_sorted = sort2d(adj_control,membership_control)
-    #draw_corr_matrix(adj_control_sorted)
