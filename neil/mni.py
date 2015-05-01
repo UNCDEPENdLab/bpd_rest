@@ -3,7 +3,7 @@
 def distance(x1,y1,z1,x2,y2,z2):
     return (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)+(z1-z2)*(z1-z2)
 
-common_roi = {"amygdala":[24,-8,-18],"acc":[12,15,45]}
+common_roi = {"amygdala":[24,-8,-18],"subgenual":[2,25,-13]}
 
 """
 Finds point in 3d space closest to the poi 3-tuple (x,y,z), returns the index of the value and the distance
