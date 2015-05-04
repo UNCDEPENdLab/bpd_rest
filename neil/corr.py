@@ -56,18 +56,28 @@ def pretty_print_2d(arr,vsize = 10,hsize=10, integer = False):
                 active_v_fill = True
             else:
                 continue
+        if not active_v_fill:
+            print "{:4d}: ".format(i),
+        else:
+            print "....: ",
         for j  in range(0,len(arr[i])):
             if horizontal_filler and j >= hsize-2 and j < len(arr[i])-1:
                 if j == hsize-2:
-                    print " ....",
+                    print " .....",
                 continue
             if active_v_fill:
-                print ".....",
+                print "......",
                 continue
             if integer:
-                print "{:5d}".format(arr[i][j]),
+                if arr[i][j] == 0:
+                    print "".ljust(6),
+                else:
+                    print "{:6d}".format(arr[i][j]),
             else: #float
-                print "{:5.3f}".format(arr[i][j]),
+                if arr[i][j] == 0:
+                    print "{:6d}".format(0),
+                else:
+                    print "{:+5.3f}".format(arr[i][j]),
         print
 
 
@@ -164,6 +174,64 @@ def create_graph(avg,percentile,weighted=True):
                 sparsed[i][j] = 0
                 sparsed[j][i] = 0
     return G,np.array(sparsed)
+
+HARD = 0
+HARD_WEIGHTED = 1
+SOFT = 3
+"""
+Creates a mapped adjacency matrix.
+
+Input: 
+    mat: 2D n x n adjacency matrix, preferably n range [-1,1] (only important for
+        continuous power-law distribution
+    map_type: HARD (default)| HARD_WEIGHTED | SOFT
+        HARD applies a hard threshold (above which an unweighted edge is placed)
+        HARD_WEIGHTED applies threshold (above which a weighted edge has weight = r)
+        SOFT applies continuous power function ((r+1)/2)^beta to map r from [-1,1] to [0,1]
+            beta of  1 degenerates to simple linear weighting (but mapping -1,1 to 0,)
+    threshold (required if using HARD or HARD_WEIGHTED)
+    beta (required if using SOFT)
+    percentile: if defined, will supercede threshold; range [0-1]. Will return
+        a hard/hard_weighted matrix with approximately ((1-percentile)*100)% of
+        original edges; 1-percentile is tie-density. Can be used to generate a
+        "equi-sparse" networks across patients, as opposed to "equi-threshold"
+
+Output:
+    adj: 2D n x n adjacency matrix; if HARD, it is binary, else it is float with range [0,1] (only guranteed if input data is [-1,1]
+"""
+def map_adjacency_matrix(mat, map_type, threshold = -2, beta = -2, percentile = -2):
+    global HARD, HARD_WEIGHTED, SOFT
+    if ( (map_type == HARD or map_type == HARD_WEIGHTED) and threshold == -2 and percentile == -2):
+        raise TypeError("Hard thresholded graphs require either a threshold or a percentile")
+    if (map_type == SOFT and beta < 1):
+        raise TypeError("Soft thresholded graphs require a beta from [1,:]")
+    adj = copy.deepcopy(mat)
+
+    if (map_type == HARD or map_type == HARD_WEIGHTED):
+        cutoff = threshold
+        if percentile != -2:
+            corr_list = []
+            for i in range(0,len(mat)):
+                for j in range(0,i):
+                    corr_list.append(avg[i][j])
+            cl = np.array(corr_list)
+            cutoff_percentile = percentile * 100
+            cutoff = np.percentile(cl,cutoff_percentile)
+        print cutoff
+        for i in range(0,len(mat)):
+            for j in range(0,len(mat[i])):
+                if i == j: # Zeroes the diagonal
+                    adj[i][j] = 0
+                elif mat[i][j] >= cutoff:
+                    if map_type == HARD:
+                        adj[i][j] = 1
+                    else:
+                        adj[i][j] = mat[i][j]
+                else:
+                    adj[i][j] = 0
+    if map_type == HARD:
+        return np.array(adj).astype(int)
+    return np.array(adj)
 
 if __name__ == '__main__':
     #patients = population

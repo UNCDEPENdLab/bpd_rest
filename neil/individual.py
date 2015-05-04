@@ -9,9 +9,12 @@ from scipy import stats
 import corr
 
 patient = "001RA_07DEC2013"
-fileone = "corr_rois_pearson_new.txt"
+fileone = "corr_rois_pearson_new_r.txt"
 
 mat,mask = corr.load_patients([corr.population_folder+'/'+patient+'/'+fileone])
-corr.pretty_print_2d(mat[:,:,0])
-
 pat = mat[:,:,0]
+corr.pretty_print_2d(pat)
+
+adj_mat = corr.map_adjacency_matrix(pat,corr.HARD_WEIGHTED,0.6)
+corr.pretty_print_2d(adj_mat)
+
