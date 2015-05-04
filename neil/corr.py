@@ -213,11 +213,11 @@ def map_adjacency_matrix(mat, map_type, threshold = -2, beta = -2, percentile = 
             corr_list = []
             for i in range(0,len(mat)):
                 for j in range(0,i):
-                    corr_list.append(avg[i][j])
+                    corr_list.append(mat[i][j])
             cl = np.array(corr_list)
             cutoff_percentile = percentile * 100
             cutoff = np.percentile(cl,cutoff_percentile)
-        print cutoff
+        #print cutoff
         for i in range(0,len(mat)):
             for j in range(0,len(mat[i])):
                 if i == j: # Zeroes the diagonal
@@ -229,9 +229,63 @@ def map_adjacency_matrix(mat, map_type, threshold = -2, beta = -2, percentile = 
                         adj[i][j] = mat[i][j]
                 else:
                     adj[i][j] = 0
+    elif map_type == SOFT:
+        for i in range(0,len(mat)):
+            for j in range(0,len(mat[i])):
+                if i == j: # Zeroes diagonal
+                    adj[i][j] = 0
+                else:
+                    adj[i][j] = np.power((mat[i][j]+1)*0.5,beta)
+    else: # This shouldn't happen
+        raise TypeError("You chose an invalid map_type entry")
     if map_type == HARD:
         return np.array(adj).astype(int)
     return np.array(adj)
+
+"""
+Returns a dictionary of network statistics, including but not limited to: node
+degree, clustering coefficient, assortativity, local/global efficiency,
+modularity. Also returns centrality measures such as PageRank, betweenness
+centrality, etc.
+
+Input:
+    mat: n x n 2D adjacency matrix, preferably with 0's on diagonal. Range [0,1] (non-negative weights).
+    weighted: Default False; modifies whichever calculations to indicate that the matrix has weighted vertices
+
+Output:
+    dictionary with the statistic names as keys, results/arrays as values
+"""
+def network_measures(mat,weighted=False):
+    measures = {}
+    # degree
+    measures["degree"] = bct.bct.degrees_und(mat)
+    measures["mean_degree"] = np.mean(measures["degree"])
+    if weighted:
+        measures["strength"] = bct.bct.strengths_und(mat)
+        measures["mean_strength"] = np.mean(measures["strength"])
+    # clustering coeff
+
+    measures["clustering_binary"] = bct.bct.clustering_coef_bu(mat)
+    measures["mean_clustering_binary"] = np.mean(measures["clustering_binary"])
+    if weighted:
+        measures["clustering_weighted"] = bct.bct.clustering_coef_wu(mat)
+        measures["mean_clustering_weighted"] = np.mean(measures["clustering_weighted"])
+    # assortativity
+    # characteristic path length
+    # Local efficiency
+    # Global efficiency
+    # modularity
+    # Giant component
+    # Ratio of mean clustering coefficient to mean clustering coefficient in randomly wired network with same degree distribution (C/C_{ran})
+    # Ratio of C/C_ran to L/L_ran (L_ran is characteristic path length of randomly wired network with same degree distribution)
+
+    # Pagerank
+    # betweenness
+    # clustering
+    # eigenvector
+    return measures
+
+
 
 if __name__ == '__main__':
     #patients = population
