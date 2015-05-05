@@ -56,18 +56,28 @@ def pretty_print_2d(arr,vsize = 10,hsize=10, integer = False):
                 active_v_fill = True
             else:
                 continue
+        if not active_v_fill:
+            print "{:4d}: ".format(i),
+        else:
+            print "....: ",
         for j  in range(0,len(arr[i])):
             if horizontal_filler and j >= hsize-2 and j < len(arr[i])-1:
                 if j == hsize-2:
-                    print " ....",
+                    print " .....",
                 continue
             if active_v_fill:
-                print ".....",
+                print "......",
                 continue
             if integer:
-                print "{:5d}".format(arr[i][j]),
+                if arr[i][j] == 0:
+                    print "".ljust(6),
+                else:
+                    print "{:6d}".format(arr[i][j]),
             else: #float
-                print "{:5.3f}".format(arr[i][j]),
+                if arr[i][j] == 0:
+                    print "{:6d}".format(0),
+                else:
+                    print "{:+5.3f}".format(arr[i][j]),
         print
 
 
@@ -164,6 +174,205 @@ def create_graph(avg,percentile,weighted=True):
                 sparsed[i][j] = 0
                 sparsed[j][i] = 0
     return G,np.array(sparsed)
+
+HARD = 0
+HARD_WEIGHTED = 1
+SOFT = 3
+"""
+Creates a mapped adjacency matrix.
+
+Input: 
+    mat: 2D n x n adjacency matrix, preferably n range [-1,1] (only important for
+        continuous power-law distribution
+    map_type: HARD (default)| HARD_WEIGHTED | SOFT
+        HARD applies a hard threshold (above which an unweighted edge is placed)
+        HARD_WEIGHTED applies threshold (above which a weighted edge has weight = r)
+        SOFT applies continuous power function ((r+1)/2)^beta to map r from [-1,1] to [0,1]
+            beta of  1 degenerates to simple linear weighting (but mapping -1,1 to 0,)
+    threshold (required if using HARD or HARD_WEIGHTED)
+    beta (required if using SOFT)
+    percentile: if defined, will supercede threshold; range [0-1]. Will return
+        a hard/hard_weighted matrix with approximately ((1-percentile)*100)% of
+        original edges; 1-percentile is tie-density. Can be used to generate a
+        "equi-sparse" networks across patients, as opposed to "equi-threshold"
+
+Output:
+    adj: 2D n x n adjacency matrix; if HARD, it is binary, else it is float with range [0,1] (only guranteed if input data is [-1,1]
+"""
+def map_adjacency_matrix(mat, map_type, threshold = -2, beta = -2, percentile = -2):
+    global HARD, HARD_WEIGHTED, SOFT
+    if ( (map_type == HARD or map_type == HARD_WEIGHTED) and threshold == -2 and percentile == -2):
+        raise TypeError("Hard thresholded graphs require either a threshold or a percentile")
+    if (map_type == SOFT and beta < 1):
+        raise TypeError("Soft thresholded graphs require a beta from [1,:]")
+    adj = copy.deepcopy(mat)
+
+    if (map_type == HARD or map_type == HARD_WEIGHTED):
+        cutoff = threshold
+        if percentile != -2:
+            corr_list = []
+            for i in range(0,len(mat)):
+                for j in range(0,i):
+                    corr_list.append(mat[i][j])
+            cl = np.array(corr_list)
+            cutoff_percentile = percentile * 100
+            cutoff = np.percentile(cl,cutoff_percentile)
+        #print cutoff
+        for i in range(0,len(mat)):
+            for j in range(0,len(mat[i])):
+                if i == j: # Zeroes the diagonal
+                    adj[i][j] = 0
+                elif mat[i][j] >= cutoff:
+                    if map_type == HARD:
+                        adj[i][j] = 1
+                    else:
+                        adj[i][j] = mat[i][j]
+                else:
+                    adj[i][j] = 0
+    elif map_type == SOFT:
+        for i in range(0,len(mat)):
+            for j in range(0,len(mat[i])):
+                if i == j: # Zeroes diagonal
+                    adj[i][j] = 0
+                else:
+                    adj[i][j] = np.power((mat[i][j]+1)*0.5,beta)
+    else: # This shouldn't happen
+        raise TypeError("You chose an invalid map_type entry")
+    if map_type == HARD:
+        return np.array(adj).astype(int)
+    return np.array(adj)
+
+"""
+Returns a dictionary of network statistics, including but not limited to: node
+degree, clustering coefficient, assortativity, local/global efficiency,
+modularity. Also returns centrality measures such as PageRank, betweenness
+centrality, etc.
+
+Input:
+    mat: n x n 2D adjacency matrix, preferably with 0's on diagonal. Range [0,1] (non-negative weights).
+    weighted: Default False; modifies whichever calculations to indicate that the matrix has weighted vertices
+
+Output:
+    dictionary with the statistic names as keys, results/arrays as values
+"""
+def network_measures(mat,weighted=False):
+    debug_timing = False
+    if debug_timing:
+        import time
+        currtime = time.clock()
+    measures = {}
+    # degree
+    measures["degree"] = bct.bct.degrees_und(mat)
+    measures["mean_degree"] = np.mean(measures["degree"])
+    if weighted:
+        measures["strength"] = bct.bct.strengths_und(mat)
+        measures["mean_strength"] = np.mean(measures["strength"])
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "degree",delta
+    # clustering coeff
+    measures["clustering_binary"] = bct.bct.clustering_coef_bu(mat)
+    measures["mean_clustering_binary"] = np.mean(measures["clustering_binary"])
+    if weighted:
+        measures["clustering_weighted"] = bct.bct.clustering_coef_wu(mat)
+        measures["mean_clustering_weighted"] = np.mean(measures["clustering_weighted"])
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "clustering coeff",delta
+    # assortativity
+    measures["assortativity_binary"] = bct.bct.assortativity_bin(mat, 0)
+    measures["mean_assortativity_binary"] = np.mean(measures["assortativity_binary"])
+    if weighted:
+        measures["assortativity_weighted"] = bct.bct.assortativity_wei(mat, 0)
+        measures["mean_assortativity_weighted"] = np.mean(measures["assortativity_weighted"])
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "assortativity",delta
+    # characteristic path length
+    # global efficiency
+    if weighted:
+        distance = bct.bct.distance_wei(mat)
+    else:
+        distance = bct.bct.distance_bin(mat)
+    cp = bct.bct.charpath(distance) # returns charpath,efficiency,ecc,radius,diameter
+    measures["charpath"]=cp[0]
+    measures["global_efficiency"] = cp[1]
+    measures["eccentricity"]=cp[2]
+    measures["radius"]=cp[3]
+    measures["diameter"]=cp[4]
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "characteristic path length",delta
+    # Local efficiency - inverse of char path length
+    measures["local_efficiency"]=bct.bct.efficiency_bin(mat,local=True)
+    measures["mean_local_efficiency"] = np.mean(measures["local_efficiency"])
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "Local efficiency ",delta
+    # modularity
+    mod = bct.bct.modularity_louvain_und(mat)
+    measures["modularity"] = mod[1]
+    measures["community_structure"] = mod[0]
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "modularity",delta
+    # Giant component
+    measures["giant_component"] = np.max(bct.bct.get_components(mat)[1])
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "Giant component",delta
+    # TODO: Ratio of mean clustering coefficient to mean clustering coefficient in randomly wired network with same degree distribution (C/C_{ran})
+    # Ratio of C/C_ran to L/L_ran (L_ran is characteristic path length of randomly wired network with same degree distribution)
+
+    # betweenness
+    measures["betweenness_binary"] = bct.bct.betweenness_bin(mat)
+    #if weighted: # NOT USED currently because the function needs a "connection-length" matrix, which would be inverted from our current weighted matrix
+        #measures["betweenness_weighted"] = bct.bct.betweenness_weighted(mat)
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "betweenness",delta
+    # clustering
+    measures["clustering_coef_binary"] = bct.bct.clustering_coef_bu(mat)
+    if weighted:
+        measures["clustering_coef_weighted"] = bct.bct.clustering_coef_wu(mat)
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "clustering",delta
+    # eigenvector
+    measures["eigenvector_centrality_und"] = bct.bct.eigenvector_centrality_und(mat)
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "eigenvector",delta
+    # Pagerank
+    measures["pagerank"] = bct.bct.pagerank_centrality(mat,0.85) # MAGIC NUMBER WARNING; default pagerank dampening factor
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "Pagerank",delta
+    return measures
+
+
 
 if __name__ == '__main__':
     #patients = population
