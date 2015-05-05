@@ -297,7 +297,7 @@ def network_measures(mat,weighted=False):
     # characteristic path length
     # global efficiency
     if weighted:
-        distance = bct.bct.distance_wei(mat)
+        distance = bct.bct.distance_bin(mat) # Of note, weighted distance not currently used because algorithm requires length matrix (smaller numbers indicate stronger connection) as opposed to weights
     else:
         distance = bct.bct.distance_bin(mat)
     cp = bct.bct.charpath(distance) # returns charpath,efficiency,ecc,radius,diameter

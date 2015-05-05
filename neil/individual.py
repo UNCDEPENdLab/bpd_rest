@@ -30,8 +30,7 @@ name = ["Hard threshold binary (equi-threshold)","Hard threshold weighted (equi-
 #corr.pretty_print_2d(adj_mat[0])
 #corr.draw_corr_matrix(adj_mat[0])
 
-#for i in range(0,len(adj_mat)):
-for i in range(0,1):
+for i in range(0,len(adj_mat)):
     #print bct.bct.degrees_und(i)
     count = 0
     for j in adj_mat[i]:
@@ -39,7 +38,7 @@ for i in range(0,1):
             if k != 0:
                 count += 1
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore") # Dangerous, but bct.py charpath is not well written and throws div-by-0 and mult-by-inf warnings as written
+        warnings.simplefilter("ignore") # Dangerous, but bct.py charpath is not well written and throws 0*inf warnings as written
         s = corr.network_measures(adj_mat[i],weighted=weighted[i])
     print name[i]
     print "# edges: %s"%(count/2)
