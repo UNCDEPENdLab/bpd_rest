@@ -256,6 +256,10 @@ Output:
     dictionary with the statistic names as keys, results/arrays as values
 """
 def network_measures(mat,weighted=False):
+    debug_timing = False
+    if debug_timing:
+        import time
+        currtime = time.clock()
     measures = {}
     # degree
     measures["degree"] = bct.bct.degrees_und(mat)
@@ -263,26 +267,109 @@ def network_measures(mat,weighted=False):
     if weighted:
         measures["strength"] = bct.bct.strengths_und(mat)
         measures["mean_strength"] = np.mean(measures["strength"])
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "degree",delta
     # clustering coeff
-
     measures["clustering_binary"] = bct.bct.clustering_coef_bu(mat)
     measures["mean_clustering_binary"] = np.mean(measures["clustering_binary"])
     if weighted:
         measures["clustering_weighted"] = bct.bct.clustering_coef_wu(mat)
         measures["mean_clustering_weighted"] = np.mean(measures["clustering_weighted"])
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "clustering coeff",delta
     # assortativity
+    measures["assortativity_binary"] = bct.bct.assortativity_bin(mat, 0)
+    measures["mean_assortativity_binary"] = np.mean(measures["assortativity_binary"])
+    if weighted:
+        measures["assortativity_weighted"] = bct.bct.assortativity_wei(mat, 0)
+        measures["mean_assortativity_weighted"] = np.mean(measures["assortativity_weighted"])
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "assortativity",delta
     # characteristic path length
-    # Local efficiency
-    # Global efficiency
+    # global efficiency
+    if weighted:
+        distance = bct.bct.distance_wei(mat)
+    else:
+        distance = bct.bct.distance_bin(mat)
+    cp = bct.bct.charpath(distance) # returns charpath,efficiency,ecc,radius,diameter
+    measures["charpath"]=cp[0]
+    measures["global_efficiency"] = cp[1]
+    measures["eccentricity"]=cp[2]
+    measures["radius"]=cp[3]
+    measures["diameter"]=cp[4]
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "characteristic path length",delta
+    # Local efficiency - inverse of char path length
+    measures["local_efficiency"]=bct.bct.efficiency_bin(mat,local=True)
+    measures["mean_local_efficiency"] = np.mean(measures["local_efficiency"])
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "Local efficiency ",delta
     # modularity
+    mod = bct.bct.modularity_louvain_und(mat)
+    measures["modularity"] = mod[1]
+    measures["community_structure"] = mod[0]
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "modularity",delta
     # Giant component
-    # Ratio of mean clustering coefficient to mean clustering coefficient in randomly wired network with same degree distribution (C/C_{ran})
+    measures["giant_component"] = np.max(bct.bct.get_components(mat)[1])
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "Giant component",delta
+    # TODO: Ratio of mean clustering coefficient to mean clustering coefficient in randomly wired network with same degree distribution (C/C_{ran})
     # Ratio of C/C_ran to L/L_ran (L_ran is characteristic path length of randomly wired network with same degree distribution)
 
-    # Pagerank
     # betweenness
+    measures["betweenness_binary"] = bct.bct.betweenness_bin(mat)
+    #if weighted: # NOT USED currently because the function needs a "connection-length" matrix, which would be inverted from our current weighted matrix
+        #measures["betweenness_weighted"] = bct.bct.betweenness_weighted(mat)
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "betweenness",delta
     # clustering
+    measures["clustering_coef_binary"] = bct.bct.clustering_coef_bu(mat)
+    if weighted:
+        measures["clustering_coef_weighted"] = bct.bct.clustering_coef_wu(mat)
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "clustering",delta
     # eigenvector
+    measures["eigenvector_centrality_und"] = bct.bct.eigenvector_centrality_und(mat)
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "eigenvector",delta
+    # Pagerank
+    measures["pagerank"] = bct.bct.pagerank_centrality(mat,0.85) # MAGIC NUMBER WARNING; default pagerank dampening factor
+    if debug_timing:
+        newtime = time.clock()
+        delta = newtime - currtime
+        currtime = newtime
+        print "Pagerank",delta
     return measures
 
 
