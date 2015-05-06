@@ -14,6 +14,7 @@ patient = "001RA_07DEC2013"
 fileone = "corr_rois_pearson_new_r.txt"
 #fileone = "corr_roimean_pearson.txt"
 
+
 mat,mask = corr.load_patients([corr.population_folder+'/'+patient+'/'+fileone])
 pat = mat[:,:,0]
 #corr.pretty_print_2d(pat)
@@ -24,27 +25,42 @@ hard_sparsed_adj_mat = corr.map_adjacency_matrix(pat,corr.HARD,percentile=0.9)
 hard_weighted_sparsed_adj_mat = corr.map_adjacency_matrix(pat,corr.HARD_WEIGHTED,percentile=0.9)
 soft_adj_mat = corr.map_adjacency_matrix(pat,corr.SOFT,beta=2)
 
-adj_mat = [hard_adj_mat,hard_weighted_adj_mat,hard_sparsed_adj_mat,hard_weighted_sparsed_adj_mat,soft_adj_mat]
+#adj_mat = [hard_adj_mat,hard_weighted_adj_mat,hard_sparsed_adj_mat,hard_weighted_sparsed_adj_mat,soft_adj_mat]
+adj_mat = [hard_adj_mat]
 weighted = [0,1,0,1,1]
 name = ["Hard threshold binary (equi-threshold)","Hard threshold weighted (equi-threshold)","Hard threshold binary (equi-sparse)","Hard threshold weighted (equi-sparse)","Soft / continuous weighted"]
+short_name = ["hard_bin ET","hard_wei ET","hard_bin ES","hard_wei ES","power"]
 #corr.pretty_print_2d(adj_mat[0])
 #corr.draw_corr_matrix(adj_mat[0])
-
+set_of_all_measures = set()
+arr_measures = []
 for i in range(0,len(adj_mat)):
     #print bct.bct.degrees_und(i)
-    count = 0
-    for j in adj_mat[i]:
-        for k in j:
-            if k != 0:
-                count += 1
     with warnings.catch_warnings():
         warnings.simplefilter("ignore") # Dangerous, but bct.py charpath is not well written and throws 0*inf warnings as written
         s = corr.network_measures(adj_mat[i],weighted=weighted[i])
-    print name[i]
-    print "# edges: %s"%(count/2)
-    for k,v in s.iteritems():
-        if type(v) ==np.ndarray:
-            print k,"list of length %i" %len(v)
-        else:
-            print k,v
+    arr_measures.append(s)
+    #for k,v in s.iteritems():
+        #if k not in set_of_all_measures:
+            #set_of_all_measures.add(k)
+        #if type(v) ==np.ndarray:
+            #print k,"list of length %i" %len(v)
+        #else:
+            #print k,v
     #corr.draw_corr_matrix(adj_mat[i])
+
+corr.compare_networks(arr_measures,[short_name[0]])
+
+#percentiles = [0.7,0.8,0.9,0.95,0.98]
+#corr.compare_networks([corr.network_measures(corr.map_adjacency_matrix(pat,corr.HARD,percentile=i),0) for i in percentiles],[str(i) for i in percentiles])
+
+patient = 0
+mat = adj_mat[patient]
+measures = arr_measures[patient]
+print(measures['community_structure'])
+
+read='ROI_nodes_new.node'
+write='my_ROI_new.node'
+comm = measures['community_structure']
+poi_list = ["l_amygdala","r_amygdala","l_subgenual"]
+corr.write_ROI_node_file(read,write,comm,poi_list)

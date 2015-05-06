@@ -157,8 +157,7 @@ def create_graph(avg,percentile,weighted=True):
         for j in range(0,i):
             corr_list.append(avg[i][j])
     cl = np.array(corr_list)
-    cutoff_percentile = 95 # percentile /  100 - tie density
-    cutoff = np.percentile(cl,cutoff_percentile)
+    cutoff = np.percentile(cl,percentile)
     #plt.hist(cl) # draws histogram of all correlations
     #plt.show()
     for i in range(0,len(avg)):
@@ -251,16 +250,19 @@ centrality, etc.
 Input:
     mat: n x n 2D adjacency matrix, preferably with 0's on diagonal. Range [0,1] (non-negative weights).
     weighted: Default False; modifies whichever calculations to indicate that the matrix has weighted vertices
+    gamma (opt): passed to modularity/community structure methods, lower than 1 preferentially searches for larger modules
 
 Output:
     dictionary with the statistic names as keys, results/arrays as values
 """
-def network_measures(mat,weighted=False):
+def network_measures(mat,weighted=False,gamma=1.0):
     debug_timing = False
     if debug_timing:
         import time
         currtime = time.clock()
     measures = {}
+    measures["num_edges"] = np.count_nonzero(mat)
+    measures["num_vertices"] = len(mat) # Lazy, but even a vertex with no connections should be counted
     # degree
     measures["degree"] = bct.bct.degrees_und(mat)
     measures["mean_degree"] = np.mean(measures["degree"])
@@ -320,7 +322,7 @@ def network_measures(mat,weighted=False):
         currtime = newtime
         print "Local efficiency ",delta
     # modularity
-    mod = bct.bct.modularity_louvain_und(mat)
+    mod = bct.bct.modularity_louvain_und(mat,gamma)
     measures["modularity"] = mod[1]
     measures["community_structure"] = mod[0]
     if debug_timing:
@@ -347,15 +349,6 @@ def network_measures(mat,weighted=False):
         delta = newtime - currtime
         currtime = newtime
         print "betweenness",delta
-    # clustering
-    measures["clustering_coef_binary"] = bct.bct.clustering_coef_bu(mat)
-    if weighted:
-        measures["clustering_coef_weighted"] = bct.bct.clustering_coef_wu(mat)
-    if debug_timing:
-        newtime = time.clock()
-        delta = newtime - currtime
-        currtime = newtime
-        print "clustering",delta
     # eigenvector
     measures["eigenvector_centrality_und"] = bct.bct.eigenvector_centrality_und(mat)
     if debug_timing:
@@ -372,18 +365,79 @@ def network_measures(mat,weighted=False):
         print "Pagerank",delta
     return measures
 
+"""
+Crude method to print a table comparing the above-generated measures between
+graphs. Gives good basic idea. Does not print lists, only singular values
+"""
+def compare_networks(arr_of_measure_dicts,names,list_of_measures = None):
+    print "{:30s}".format("measure"),
+    for i in names:
+        print "{:15s}".format(i[:14]),
+    print ""
 
+    if list_of_measures == None:
+        set_of_all_measures = set()
+        for s in arr_of_measure_dicts:
+            for k,v in s.iteritems():
+                if k not in set_of_all_measures:
+                    set_of_all_measures.add(k)
+        list_of_measures = sorted(list(set_of_all_measures))
+
+    for k in list_of_measures:
+        print "{:30s}".format(k[:29]),
+        for i in range(0,len(arr_of_measure_dicts)):
+            if k in arr_of_measure_dicts[i]:
+                v = arr_of_measure_dicts[i][k]
+                if type(v) != np.ndarray:
+                    print "{:15s}".format(str(v)[:14]),
+                else:
+                    print "{:15s}".format("len([])={:d}".format(len(v))),
+            else:
+                print "{:15s}".format(" "),
+        print ""
+
+def get_ROI_list(loadfile):
+    f = open(loadfile,'r')
+    roi = [line.strip().split('\t') for line in f]
+    f.close()
+    return roi
+
+"""
+Writes an ROI node file for BrainNetViewer using a template file, rewriting
+coloring based on the community structure given in coloring_list, and increases
+the size of the POI list
+Input:
+    loadfile: name of file to input, contains N entries
+    writefile: name of file to output (will overwrite prior files there!)
+    coloring_list: list of length N, each entry numbered according to group
+    poi_list: list of names of ROIs which we will look up on ROI table to find appropriate ROI
+
+    todo: Eventual goal is to pass optional poi_index directly to this, bypassing the named array
+"""
+def write_ROI_node_file(loadfile,writefile,coloring_list,poi_list):
+    roi = get_ROI_list(loadfile)
+    for i in range(0,len(roi)):
+        roi[i][3] = int(coloring_list[i])
+    poi_index = [mni.find_closest(mni.common_roi[i],roi)[0] for i in poi_list]
+    for p in poi_index:
+        roi[p][4]=4 # Default size is 2
+    f = open(writefile,'w')
+    for i in range(0,len(roi)):
+        for item in roi[i]:
+            f.write(str(item)+'\t')
+        f.write('\n')
+    f.close()
 
 if __name__ == '__main__':
     #patients = population
     #folder = population_folder
     mat_control,mask_control = load_patients([control_folder+'/'+i+'/'+filename for i in control]) # will be mat[x][y][i] where i is trial, x and y represent the correlation adjacency matrix for that patient on the Power 264 node setup
     adj_control = average_patients(mat_control,mask_control)
-    G_control,sparsed_adj_control = create_graph(adj_control,90,weighted=False)
+    G_control,sparsed_adj_control = create_graph(adj_control,95,weighted=False)
 
     mat_population,mask_population = load_patients([population_folder+'/'+i+'/'+filename for i in population]) # will be mat[x][y][i] where i is trial, x and y represent the correlation adjacency matrix for that patient on the Power 264 node setup
     adj_population = average_patients(mat_population,mask_population) # adj_population[x][y] represents averaged adjacency matrix for all trials
-    G_population,sparsed_adj_population = create_graph(adj_population,90,weighted=False)
+    G_population,sparsed_adj_population = create_graph(adj_population,95,weighted=False)
 
     #ig.summary(G_control)
     #print G_control.degree(range(0,10))
@@ -421,6 +475,7 @@ if __name__ == '__main__':
     print "NMI score (control to Power): ",ig.clustering.compare_communities(power,membership_control,method="nmi") # nmi, vi, etc
     print "NMI score (population to Power): ",ig.clustering.compare_communities(power,membership_population,method="nmi") # nmi, vi, etc
     print "NMI score (population to control): ",ig.clustering.compare_communities(membership_population,membership_control,method="nmi") # nmi, vi, etc
+    print "NMI score (control (via bct algo) to Power): ",ig.clustering.compare_communities(membership_population,bct.bct.modularity_louvain_und(sparsed_adj_control)[0],method="nmi")
 
 
     f = open('ROI_nodes.node','r')
@@ -428,7 +483,7 @@ if __name__ == '__main__':
     f.close()
     for i in range(0,len(membership_control)):
         roi[i][3] = membership_control[i]
-    poi_index,dist = mni.find_closest(mni.common_roi['amygdala'],roi)
+    poi_index,dist = mni.find_closest(mni.common_roi['l_amygdala'],roi)
 
     
     print "PageRank (c): ",bct.bct.pagerank_centrality(adj_control,0.85)[poi_index]

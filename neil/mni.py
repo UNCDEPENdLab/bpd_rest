@@ -3,7 +3,7 @@
 def distance(x1,y1,z1,x2,y2,z2):
     return (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)+(z1-z2)*(z1-z2)
 
-common_roi = {"amygdala":[24,-8,-18],"subgenual":[2,25,-13]}
+common_roi = {"l_amygdala":[-24,-8,-18],"r_amygdala":[24,-8,-18],"r_subgenual":[2,25,-13],"l_subgenual":[-2,25,-13]}
 
 """
 Finds point in 3d space closest to the poi 3-tuple (x,y,z), returns the index of the value and the distance
@@ -13,10 +13,10 @@ def find_closest(poi,arr):
     x = poi[0]
     y = poi[1]
     z = poi[2]
-    closest = distance(int(arr[index][0]),int(arr[index][1]),int(arr[index][2]),x,y,z)
+    closest = distance(float(arr[index][0]),float(arr[index][1]),float(arr[index][2]),x,y,z)
 
     for i in range(1,len(arr)):
-        d = distance(int(arr[i][0]),int(arr[i][1]),int(arr[i][2]),x,y,z)
+        d = distance(float(arr[i][0]),float(arr[i][1]),float(arr[i][2]),x,y,z)
         if d < closest:
             index = i
             closest = d
