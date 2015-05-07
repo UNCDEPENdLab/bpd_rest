@@ -11,22 +11,24 @@ from scipy import stats
 base_folder = '/Volumes/Serena/Raj/Preprocess_Rest'
 
 control_folder=base_folder
-control=['10637_20140304', '10638_20140507', '10711_20140826', '10717_20140813', '10767_20140814', '10772_20140527', '10811_20140721', '10814_20140623', '10822_20140619', '10873_20140918', '10891_20140728', '10997_20140308', '11162_20140717', '11178_20140310', '11216_20141029', '11228_20140922', '11229_20140521', '11243_20140130', '11250_20140228', '11252_20140213', '11253_20140308', '11255_20140227', '11256_20140314', '11258_20140306', '11262_20140331', '11263_20140307', '11265_20141006', '11274_20140603', '11275_20140527', '11277_20140410', '11278_20140519', '11279_20140423', '11280_20140905', '11281_20140416', '11282_20141111', '11287_20140528', '11288_20140602', '11298_20140702', '11302_20140919', '11304_20140812', '11305_20140805', '11310_20140731', '11311_20140819', '11313_20140918', '11314_20140916', '11315_20140822', '11316_20140818', '11317_20140829', '11318_20140828', '11319_20140904', '11321_20140925', '11322_20140904', '11323_20141126', '11324_20141023', '11325_20141007', '11326_20140922', '11328_20141113', '11329_20141014', '11331_20141024', '11335_20141111', '11336_20141204', '11337_20141117', '11338_20141213', '11342_20150228', '11343_20141213', '11344_20141209', '11345_20141211', '11346_20150131', '11347_20141205', '11353_20150124'] # all controls
+control=['10637_20140304', '10638_20140507', '10711_20140826', '10717_20140813', '10767_20140814', '10772_20140527', '10811_20140721', '10814_20140623', '10822_20140619', '10873_20140918', '10891_20140728', '10997_20140308', '11162_20140717', '11178_20140310', '11216_20141029', '11228_20140922', '11229_20140521', '11243_20140130', '11250_20140228', '11252_20140213', '11253_20140308', '11255_20140227', '11256_20140314', '11258_20140306', '11262_20140331', '11263_20140307', '11265_20141006', '11274_20140603', '11275_20140527', '11278_20140519', '11279_20140423', '11280_20140905', '11281_20140416', '11282_20141111', '11287_20140528', '11288_20140602', '11298_20140702', '11302_20140919', '11304_20140812', '11305_20140805', '11310_20140731', '11311_20140819', '11313_20140918', '11314_20140916', '11315_20140822', '11316_20140818', '11317_20140829', '11318_20140828', '11319_20140904', '11321_20140925', '11322_20140904', '11323_20141126', '11324_20141023', '11325_20141007', '11326_20140922', '11328_20141113', '11329_20141014', '11331_20141024', '11335_20141111', '11336_20141204', '11337_20141117', '11338_20141213', '11342_20150228', '11343_20141213', '11344_20141209', '11345_20141211', '11346_20150131', '11347_20141205', '11353_20150124'] # all controls except '11277_20140410' because it was missing at last generation
 population_folder = base_folder+'/SPECC'
-population= ['008JH_13JAN2014', '013jk_30Apr2014', '015cw_03May2014', '018LQ_26MAR2014', '019ec_04Aug2014', '020lr_03May2014', '023ds_07May2014', '025ay_10Jun2014', '027AD_18Sep2014', '031VN_09Sep2014', '037ll_25Aug2014', '038aa_03nov2014', '046ak_03Nov2014', '047ab_03nov2014', '048ah_18Dec2014', '050ai_06Nov2014', '054ls_12Jan2015', '058ab_15Jan2015', '059cr_08jan2015', '066dw_14Mar2015'] # removed first two (controls), last one is omitted as corr matrix had not yet completed
-filename = 'corr_roimean_pearson.txt' # robust vs pearson
+population= ['008JH_13JAN2014', '013jk_30Apr2014', '015cw_03May2014', '018LQ_26MAR2014', '019ec_04Aug2014', '020lr_03May2014', '023ds_07May2014', '025ay_10Jun2014', '027AD_18Sep2014', '031VN_09Sep2014', '037ll_25Aug2014', '038aa_03nov2014', '046ak_03Nov2014', '047ab_03nov2014', '048ah_18Dec2014', '050ai_06Nov2014', '054ls_12Jan2015', '058ab_15Jan2015', '059cr_08jan2015', '066dw_14Mar2015','071eh_09Apr2015'] # removed first two (controls)
+#filename = 'corr_roimean_pearson.txt' # robust vs pearson
+filename = 'corr_rois_pearson_new_r.txt' # robust vs pearson
 
 """
 Correlation matrix graphical generation
 """
-def draw_corr_matrix(arr):
+def draw_corr_matrix(arr,show=True):
     arr_np = np.array(arr)
     pylab.pcolor(arr_np)
     pylab.colorbar()
-    pylab.show()
+    if show:
+        pylab.show()
 
 """
-Returns the 2d array sorted by the index list
+Returns the 2d array sorted by the index list; primary use is to sort communities together
 """
 def sort2d(arr,sorter_index):
     sorter = sorted(zip (sorter_index,range(0,len(sorter_index))))
@@ -147,8 +149,10 @@ matrix and taking only highest percentile edges (tie density). Requires the
 correlation matrix (recommended 0'd diagonal), percentile for cutoff (100 minus
 tie-density), and takes optional argument to include weighted edges or binary.
 Returns igraph Graph object and numpy array representing the sparsified matrix
+
+Note: can be used to generate a graph with all edges intact if percentile is given as 0
 """
-def create_graph(avg,percentile,weighted=True):
+def create_graph(avg,percentile=0,weighted=True):
     G = ig.Graph()
     G.add_vertices(len(avg))
     sparsed = copy.deepcopy(avg)
@@ -396,6 +400,16 @@ def compare_networks(arr_of_measure_dicts,names,list_of_measures = None):
                 print "{:15s}".format(" "),
         print ""
 
+def print_nodal_measures(measure_dict):
+    arr_names = []
+    arr = []
+    size = measure_dict["num_nodes"]
+    for k,v in measure_dict.iteritems():
+        if type(v) == np.ndarray and len(v) == size:
+            arr.append(v)
+            arr_names.append(k)
+    print arr_names
+
 def get_ROI_list(loadfile):
     f = open(loadfile,'r')
     roi = [line.strip().split('\t') for line in f]
@@ -429,8 +443,6 @@ def write_ROI_node_file(loadfile,writefile,coloring_list,poi_list):
     f.close()
 
 if __name__ == '__main__':
-    #patients = population
-    #folder = population_folder
     mat_control,mask_control = load_patients([control_folder+'/'+i+'/'+filename for i in control]) # will be mat[x][y][i] where i is trial, x and y represent the correlation adjacency matrix for that patient on the Power 264 node setup
     adj_control = average_patients(mat_control,mask_control)
     G_control,sparsed_adj_control = create_graph(adj_control,95,weighted=False)
@@ -440,12 +452,7 @@ if __name__ == '__main__':
     G_population,sparsed_adj_population = create_graph(adj_population,95,weighted=False)
 
     #ig.summary(G_control)
-    #print G_control.degree(range(0,10))
-    #print G_control.betweenness(range(0,10))
-    #print G_control.edge_betweenness()[0:10]
 
-    #draw_corr_matrix(adj_control)
-    #draw_corr_matrix(adj_population)
     """
     Community detection algorithms
     can use optimal [too slow for 100+ node graphs, did not terminate after 45 min on 264 node], fastgreedy, infomap, and others
@@ -457,28 +464,18 @@ if __name__ == '__main__':
     #membership = clusters.membership
     clusters_control = G_control.community_infomap()
     membership_control = clusters_control.membership
-    #print clusters_control
-
     clusters_population = G_population.community_infomap()
     membership_population = clusters_population.membership
-    #print clusters_population
-
-    #print membership_control
     # ig.plot(cluster, vertex_label=range(0,len(adj_control)),vertex_label_size=8,bbox=[1000,1000]) # PLOT community clusters
 
-
-
-    #Community comparators
-    f1 = open('power_communities.txt','r')
-    power = [int(f.strip()) for f in f1.read().split('\n') if len(f)>0]
-    f1.close()
-    print "NMI score (control to Power): ",ig.clustering.compare_communities(power,membership_control,method="nmi") # nmi, vi, etc
-    print "NMI score (population to Power): ",ig.clustering.compare_communities(power,membership_population,method="nmi") # nmi, vi, etc
+    #Community comparators 
+    #f1 = open('power_communities.txt','r') # No longer can use because of new ROI list
+    #power = [int(f.strip()) for f in f1.read().split('\n') if len(f)>0]
+    #f1.close()
+    #print "NMI score (control to Power): ",ig.clustering.compare_communities(power,membership_control,method="nmi") # nmi, vi, etc
     print "NMI score (population to control): ",ig.clustering.compare_communities(membership_population,membership_control,method="nmi") # nmi, vi, etc
-    print "NMI score (control (via bct algo) to Power): ",ig.clustering.compare_communities(membership_population,bct.bct.modularity_louvain_und(sparsed_adj_control)[0],method="nmi")
 
-
-    f = open('ROI_nodes.node','r')
+    f = open('ROI_nodes_new.node','r')
     roi = [line.strip().split('\t') for line in f]
     f.close()
     for i in range(0,len(membership_control)):
@@ -505,6 +502,18 @@ if __name__ == '__main__':
 
     print stats.ttest_ind(pagerank_control,pagerank_population)
     print stats.ttest_ind(clustering_control,clustering_population)
+    colored_mat_control = [[membership_control[j] if membership_control[j]== membership_control[i] else -2 for j in range(0,len(adj_control[i])) ] for i in range(0,len(adj_control))]
+    colored_mat_population = [[membership_population[j] if membership_population[j] == membership_population[i] else -2 for j in range(0,len(adj_population[i])) ] for i in range(0,len(adj_population))]
+    pylab.subplot(2,2,1)
+    draw_corr_matrix(adj_control,show=False)
+    pylab.subplot(2,2,2)
+    draw_corr_matrix(colored_mat_control,show=False)
+    pylab.subplot(2,2,3)
+    draw_corr_matrix(sort2d(adj_control,membership_control),show=False)
+    pylab.subplot(2,2,4)
+    draw_corr_matrix(sort2d(colored_mat_control,membership_control),show=False)
+    pylab.show()
+    #write_ROI_node_file('ROI_nodes_new.node','my_ROI_new.node',membership_control,['l_amygdala'])
     """
     #sorts the matrix by membership to more easily identify communities; in theory
     #the Power et al ROIs were selected and ordered such that large communities are
@@ -526,13 +535,3 @@ if __name__ == '__main__':
     #draw_corr_matrix(membership2d)
     """
 
-    """
-    # write ROI node file with community membership data to be opened in BrainNet Viewer
-
-    f = open('my_ROI.node','w')
-    for i in range(0,len(roi)):
-        for item in roi[i]:
-            f.write(str(item)+'\t')
-        f.write('\n')
-    f.close()
-    """

@@ -56,11 +56,23 @@ corr.compare_networks(arr_measures,[short_name[0]])
 
 patient = 0
 mat = adj_mat[patient]
+#mat,reorder_indices,cost = bct.bct.reorder_matrix(adj_mat[patient])
 measures = arr_measures[patient]
 print(measures['community_structure'])
 
-read='ROI_nodes_new.node'
-write='my_ROI_new.node'
-comm = measures['community_structure']
+graph,am = corr.create_graph(mat,weighted=False)
+comm = graph.community_infomap().membership
+print comm
 poi_list = ["l_amygdala","r_amygdala","l_subgenual"]
-corr.write_ROI_node_file(read,write,comm,poi_list)
+read='ROI_nodes_new.node'
+roi_list = corr.get_ROI_list(read)
+poi_index = [mni.find_closest(mni.common_roi[i],roi_list)[0] for i in poi_list]
+print poi_index
+print [comm[i] for i in poi_index]
+
+#colored_mat = [[comm[j] for j in range(0,len(i))] for i in mat]
+#colored_mat = [[comm[j] if mat[i][j] != 0 else -2 for j in range(0,len(mat[i])) ] for i in range(0,len(mat))]
+#corr.draw_corr_matrix(corr.sort2d(colored_mat,comm))
+
+#write='my_ROI_new.node'
+#corr.write_ROI_node_file(read,write,comm,poi_list)
