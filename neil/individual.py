@@ -49,7 +49,7 @@ for i in range(0,len(adj_mat)):
             #print k,v
     #corr.draw_corr_matrix(adj_mat[i])
 
-corr.compare_networks(arr_measures,[short_name[0]])
+#corr.compare_networks(arr_measures,[short_name[0]])
 
 #percentiles = [0.7,0.8,0.9,0.95,0.98]
 #corr.compare_networks([corr.network_measures(corr.map_adjacency_matrix(pat,corr.HARD,percentile=i),0) for i in percentiles],[str(i) for i in percentiles])
@@ -58,17 +58,18 @@ patient = 0
 mat = adj_mat[patient]
 #mat,reorder_indices,cost = bct.bct.reorder_matrix(adj_mat[patient])
 measures = arr_measures[patient]
-print(measures['community_structure'])
+#print(measures['community_structure'])
 
 graph,am = corr.create_graph(mat,weighted=False)
 comm = graph.community_infomap().membership
-print comm
+#print comm
 poi_list = ["l_amygdala","r_amygdala","l_subgenual"]
 read='ROI_nodes_new.node'
 roi_list = corr.get_ROI_list(read)
 poi_index = [mni.find_closest(mni.common_roi[i],roi_list)[0] for i in poi_list]
-print poi_index
-print [comm[i] for i in poi_index]
+#print poi_index
+#print [comm[i] for i in poi_index]
+corr.print_nodal_measures(measures)
 
 #colored_mat = [[comm[j] for j in range(0,len(i))] for i in mat]
 #colored_mat = [[comm[j] if mat[i][j] != 0 else -2 for j in range(0,len(mat[i])) ] for i in range(0,len(mat))]
