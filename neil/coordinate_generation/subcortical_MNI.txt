@@ -1,0 +1,5 @@
+r_amygdala 23.5 -3.5 -18.2
+l_amygdala -23.0 -4.7 -18.1
+l_caudate -12.7 9.4 9.8
+r_caudate 13.3 10.4 10.5
+r_amygdala l_amygdala l_caudate r_caudate 
