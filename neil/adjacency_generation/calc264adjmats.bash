@@ -1,6 +1,6 @@
 #!/bin/bash
 
-funcRuns=$(find $PWD -maxdepth 1 -iname brnswudktm_rest_5.nii.gz)
+funcRuns=$(find $PWD -maxdepth 2 -iname brnswudktm_rest_5.nii.gz)
 set -ex
 for f in $funcRuns; do
     cd $(dirname $f)
