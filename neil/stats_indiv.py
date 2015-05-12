@@ -16,6 +16,7 @@ reader = csv.reader(f)
 data = [r for r in reader]
 measures = data.pop(0)
 size = len(measures)
+f.close()
 
 #pat,mask = corr.load_patients([datafile])
 #pat = pat[:,:,0]
