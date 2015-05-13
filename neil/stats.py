@@ -7,9 +7,9 @@ import warnings
 import pylab
 
 control_folder = corr.control_folder
-control = corr.control[:10]
+control = corr.control[:4]
 population_folder = corr.population_folder
-population = corr.population[:10]
+population = corr.population[:4]
 filename = 'corr_rois_pearson_new_r_v2.txt'
 
 debug_timing = True
@@ -53,15 +53,10 @@ if debug_timing:
 # generate stats
 everyone_stats = [] # [n][dict]
 for i in range(0,len(everyone_mapped)):
-    """
-    pop_stats = []
-    for j in range(0,len(everyone_mapped[i])):
-        pop_stats.append(corr.network_measures(everyone_mapped[i][j],weighted=weighted,limited=True))
-    """
     func = corr.network_measures_helper_generator({'weighted':weighted,'limited':True})
-    #pop_stats = map(func,everyone_mapped[i]) mapped version of above, serial
-    parallel_func = corr.parallel_function(func)
-    pop_stats = parallel_func(everyone_mapped[i],pool_size=2)
+    pop_stats = map(func,everyone_mapped[i]) # mapped version of prior for loop, serial, works well
+    #parallel_func = corr.parallel_function(func) # DOES NOT WORK CURRENTLY, likely due to memory inefficiency in the centrality measure calculations in BCT
+    #pop_stats = parallel_func(everyone_mapped[i],pool_size=2)
 
     everyone_stats.append(pop_stats)
 
