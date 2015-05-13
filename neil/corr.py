@@ -15,7 +15,7 @@ control=['10637_20140304', '10638_20140507', '10711_20140826', '10717_20140813',
 population_folder = base_folder+'/SPECC'
 population= ['008JH_13JAN2014', '013jk_30Apr2014', '015cw_03May2014', '018LQ_26MAR2014', '019ec_04Aug2014', '020lr_03May2014', '023ds_07May2014', '025ay_10Jun2014', '027AD_18Sep2014', '031VN_09Sep2014', '037ll_25Aug2014', '038aa_03nov2014', '046ak_03Nov2014', '047ab_03nov2014', '048ah_18Dec2014', '049tm_17Apr2015', '050ai_06Nov2014', '0531lw_16Dec2014', '054ls_12Jan2015', '057as-09Dec2014', '058ab_15Jan2015', '059cr_08jan2015', '066dw_14Mar2015', '067sm_23Apr2015', '071eh_09Apr2015'] # removed first two (controls)
 #filename = 'corr_roimean_pearson.txt' # robust vs pearson
-filename = 'corr_rois_pearson_new_r.txt' # robust vs pearson
+filename = 'corr_rois_pearson_new_r_v2.txt' # robust vs pearson
 
 """
 Correlation matrix graphical generation
@@ -317,7 +317,7 @@ def network_measures(mat,weighted=False,gamma=1.0):
         delta = newtime - currtime
         currtime = newtime
         print "characteristic path length",delta
-    # Local efficiency - inverse of char path length
+    # Local efficiency - inverse of char path length; cannot use weighted measure as it requests a weighted distance matrix
     measures["local_efficiency"]=bct.bct.efficiency_bin(mat,local=True)
     measures["mean_local_efficiency"] = np.mean(measures["local_efficiency"])
     if debug_timing:
@@ -478,7 +478,7 @@ if __name__ == '__main__':
     #print "NMI score (control to Power): ",ig.clustering.compare_communities(power,membership_control,method="nmi") # nmi, vi, etc
     print "NMI score (population to control): ",ig.clustering.compare_communities(membership_population,membership_control,method="nmi") # nmi, vi, etc
 
-    f = open('ROI_nodes_new.node','r')
+    f = open('ROI_nodes_new_v2.node','r')
     roi = [line.strip().split('\t') for line in f]
     f.close()
     for i in range(0,len(membership_control)):
@@ -518,7 +518,7 @@ if __name__ == '__main__':
     pylab.subplot(2,2,4)
     draw_corr_matrix(sort2d(colored_mat_control,membership_control),show=False)
     pylab.show()
-    #write_ROI_node_file('ROI_nodes_new.node','my_ROI_new.node',membership_control,['l_amygdala'])
+    #write_ROI_node_file('ROI_nodes_new_v2.node','my_ROI_new_v2.node',membership_control,['l_amygdala'])
     
     """
     #sorts the matrix by membership to more easily identify communities; in theory
