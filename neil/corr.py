@@ -7,6 +7,7 @@ import pylab
 import mni
 import bct
 from scipy import stats
+from functools import partial
 
 base_folder = '/Volumes/Serena/Raj/Preprocess_Rest'
 
@@ -259,7 +260,7 @@ Input:
 Output:
     dictionary with the statistic names as keys, results/arrays as values
 """
-def network_measures(mat,weighted=False,gamma=1.0,limited=False):
+def network_measures(mat,weighted=False,limited=False,gamma=1.0):
     debug_timing = False
     if debug_timing:
         import time
@@ -448,6 +449,29 @@ def write_ROI_node_file(loadfile,writefile,coloring_list,poi_list):
             f.write(str(item)+'\t')
         f.write('\n')
     f.close()
+
+def network_measures_helper_generator(args):
+    """
+        Used for multiprocessing; optional dictionary with keys 'weighted', 'limited', 'gamma'
+        Returns:
+            partial function with above args filled in, only requiring mat
+    """
+    return partial(network_measures,**args)
+
+def parallel_function(f):
+    def easy_parallelize(f, sequence,pool_size=8):
+        """ assumes f takes sequence as input, easy w/ Python's scope """
+        from multiprocessing import Pool
+        pool = Pool(processes=pool_size) # depends on available cores
+        result = pool.map(f, sequence) # for i in sequence: result[i] = f(i)
+        cleaned = [x for x in result if not x is None] # getting results
+        cleaned = np.asarray(cleaned)
+        pool.close() # not optimal! but easy
+        pool.join()
+        return cleaned
+    from functools import partial
+    return partial(easy_parallelize, f)
+
 
 if __name__ == '__main__':
     mat_control,mask_control = load_patients([control_folder+'/'+i+'/'+filename for i in control]) # will be mat[x][y][i] where i is trial, x and y represent the correlation adjacency matrix for that patient on the Power 264 node setup
