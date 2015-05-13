@@ -11,7 +11,7 @@ import warnings
 import corr
 
 patient = "001RA_07DEC2013"
-fileone = "corr_rois_pearson_new_r.txt"
+fileone = "corr_rois_pearson_new_r_v2.txt"
 #fileone = "corr_roimean_pearson.txt"
 
 

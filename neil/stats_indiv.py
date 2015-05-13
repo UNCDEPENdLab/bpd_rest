@@ -8,7 +8,7 @@ import pylab
 folder = '/Volumes/Serena/Raj/Preprocess_Rest/SPECC/'
 patient = '008JH_13JAN2014'
 files = '/Volumes/Serena/SPECC/Neil/bpd_rest/neil/stats_output_bin/'+patient
-filename = 'corr_rois_pearson_new_r.txt'
+filename = 'corr_rois_pearson_new_r_v2.txt'
 datafile = folder+patient+'/'+filename
 
 f = open(files,'rt')

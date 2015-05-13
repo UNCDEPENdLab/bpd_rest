@@ -259,7 +259,7 @@ Input:
 Output:
     dictionary with the statistic names as keys, results/arrays as values
 """
-def network_measures(mat,weighted=False,gamma=1.0):
+def network_measures(mat,weighted=False,gamma=1.0,limited=False):
     debug_timing = False
     if debug_timing:
         import time
@@ -290,33 +290,35 @@ def network_measures(mat,weighted=False,gamma=1.0):
         currtime = newtime
         print "clustering coeff",delta
     # assortativity
-    measures["assortativity_binary"] = bct.bct.assortativity_bin(mat, 0)
-    measures["mean_assortativity_binary"] = np.mean(measures["assortativity_binary"])
-    if weighted:
-        measures["assortativity_weighted"] = bct.bct.assortativity_wei(mat, 0)
-        measures["mean_assortativity_weighted"] = np.mean(measures["assortativity_weighted"])
-    if debug_timing:
-        newtime = time.clock()
-        delta = newtime - currtime
-        currtime = newtime
-        print "assortativity",delta
+    if not limited:
+        measures["assortativity_binary"] = bct.bct.assortativity_bin(mat, 0)
+        measures["mean_assortativity_binary"] = np.mean(measures["assortativity_binary"])
+        if weighted:
+            measures["assortativity_weighted"] = bct.bct.assortativity_wei(mat, 0)
+            measures["mean_assortativity_weighted"] = np.mean(measures["assortativity_weighted"])
+        if debug_timing:
+            newtime = time.clock()
+            delta = newtime - currtime
+            currtime = newtime
+            print "assortativity",delta
     # characteristic path length
     # global efficiency
-    if weighted:
-        distance = bct.bct.distance_bin(mat) # Of note, weighted distance not currently used because algorithm requires length matrix (smaller numbers indicate stronger connection) as opposed to weights
-    else:
-        distance = bct.bct.distance_bin(mat)
-    cp = bct.bct.charpath(distance) # returns charpath,efficiency,ecc,radius,diameter
-    measures["charpath"]=cp[0]
-    measures["global_efficiency"] = cp[1]
-    measures["eccentricity"]=cp[2]
-    measures["radius"]=cp[3]
-    measures["diameter"]=cp[4]
-    if debug_timing:
-        newtime = time.clock()
-        delta = newtime - currtime
-        currtime = newtime
-        print "characteristic path length",delta
+    if not limited:
+        if weighted:
+            distance = bct.bct.distance_bin(mat) # Of note, weighted distance not currently used because algorithm requires length matrix (smaller numbers indicate stronger connection) as opposed to weights
+        else:
+            distance = bct.bct.distance_bin(mat)
+        cp = bct.bct.charpath(distance) # returns charpath,efficiency,ecc,radius,diameter
+        measures["charpath"]=cp[0]
+        measures["global_efficiency"] = cp[1]
+        measures["eccentricity"]=cp[2]
+        measures["radius"]=cp[3]
+        measures["diameter"]=cp[4]
+        if debug_timing:
+            newtime = time.clock()
+            delta = newtime - currtime
+            currtime = newtime
+            print "characteristic path length",delta
     # Local efficiency - inverse of char path length; cannot use weighted measure as it requests a weighted distance matrix
     measures["local_efficiency"]=bct.bct.efficiency_bin(mat,local=True)
     measures["mean_local_efficiency"] = np.mean(measures["local_efficiency"])
@@ -326,21 +328,23 @@ def network_measures(mat,weighted=False,gamma=1.0):
         currtime = newtime
         print "Local efficiency ",delta
     # modularity
-    mod = bct.bct.modularity_louvain_und(mat,gamma)
-    measures["modularity"] = mod[1]
-    measures["community_structure"] = mod[0]
-    if debug_timing:
-        newtime = time.clock()
-        delta = newtime - currtime
-        currtime = newtime
-        print "modularity",delta
+    if not limited:
+        mod = bct.bct.modularity_louvain_und(mat,gamma)
+        measures["modularity"] = mod[1]
+        measures["community_structure"] = mod[0]
+        if debug_timing:
+            newtime = time.clock()
+            delta = newtime - currtime
+            currtime = newtime
+            print "modularity",delta
     # Giant component
-    measures["giant_component"] = np.max(bct.bct.get_components(mat)[1])
-    if debug_timing:
-        newtime = time.clock()
-        delta = newtime - currtime
-        currtime = newtime
-        print "Giant component",delta
+    if not limited:
+        measures["giant_component"] = np.max(bct.bct.get_components(mat)[1])
+        if debug_timing:
+            newtime = time.clock()
+            delta = newtime - currtime
+            currtime = newtime
+            print "Giant component",delta
     # TODO: Ratio of mean clustering coefficient to mean clustering coefficient in randomly wired network with same degree distribution (C/C_{ran})
     # Ratio of C/C_ran to L/L_ran (L_ran is characteristic path length of randomly wired network with same degree distribution)
 
