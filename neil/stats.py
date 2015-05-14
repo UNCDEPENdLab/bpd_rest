@@ -7,9 +7,9 @@ import warnings
 import pylab
 
 control_folder = corr.control_folder
-control = corr.control[:4]
+control = corr.control
 population_folder = corr.population_folder
-population = corr.population[:4]
+population = corr.population
 filename = 'corr_rois_pearson_new_r_v2.txt'
 
 debug_timing = True
@@ -110,6 +110,7 @@ for key in global_measures:
     s = stats.ttest_ind(control,population)
     print "{:30s} {:10.4f}{:10.4f}{:10.4f}{:10.4f}{:10.4f}{:10.4f}".format(key[:30], np.mean(control),np.mean(population),np.std(control),np.std(population),s[0],s[1])
 
+"""
 # compare local measures at specified ROIs
 rois = ["l_amygdala","r_amygdala","l_subgenual"]
 read='ROI_nodes_new_v2.node'
@@ -134,6 +135,7 @@ if debug_timing:
     delta = newtime - currtime
     currtime = newtime
     print "calculate measures",delta
+"""
 
 """
 # write out all local measures in 1 file per subject, 1 line per ROI
