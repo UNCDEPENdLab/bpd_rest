@@ -7,6 +7,7 @@ import pylab
 import mni
 import bct
 from scipy import stats
+from functools import partial
 
 base_folder = '/Volumes/Serena/Raj/Preprocess_Rest'
 
@@ -259,7 +260,7 @@ Input:
 Output:
     dictionary with the statistic names as keys, results/arrays as values
 """
-def network_measures(mat,weighted=False,gamma=1.0):
+def network_measures(mat,weighted=False,limited=False,gamma=1.0):
     debug_timing = False
     if debug_timing:
         import time
@@ -290,33 +291,35 @@ def network_measures(mat,weighted=False,gamma=1.0):
         currtime = newtime
         print "clustering coeff",delta
     # assortativity
-    measures["assortativity_binary"] = bct.bct.assortativity_bin(mat, 0)
-    measures["mean_assortativity_binary"] = np.mean(measures["assortativity_binary"])
-    if weighted:
-        measures["assortativity_weighted"] = bct.bct.assortativity_wei(mat, 0)
-        measures["mean_assortativity_weighted"] = np.mean(measures["assortativity_weighted"])
-    if debug_timing:
-        newtime = time.clock()
-        delta = newtime - currtime
-        currtime = newtime
-        print "assortativity",delta
+    if not limited:
+        measures["assortativity_binary"] = bct.bct.assortativity_bin(mat, 0)
+        measures["mean_assortativity_binary"] = np.mean(measures["assortativity_binary"])
+        if weighted:
+            measures["assortativity_weighted"] = bct.bct.assortativity_wei(mat, 0)
+            measures["mean_assortativity_weighted"] = np.mean(measures["assortativity_weighted"])
+        if debug_timing:
+            newtime = time.clock()
+            delta = newtime - currtime
+            currtime = newtime
+            print "assortativity",delta
     # characteristic path length
     # global efficiency
-    if weighted:
-        distance = bct.bct.distance_bin(mat) # Of note, weighted distance not currently used because algorithm requires length matrix (smaller numbers indicate stronger connection) as opposed to weights
-    else:
-        distance = bct.bct.distance_bin(mat)
-    cp = bct.bct.charpath(distance) # returns charpath,efficiency,ecc,radius,diameter
-    measures["charpath"]=cp[0]
-    measures["global_efficiency"] = cp[1]
-    measures["eccentricity"]=cp[2]
-    measures["radius"]=cp[3]
-    measures["diameter"]=cp[4]
-    if debug_timing:
-        newtime = time.clock()
-        delta = newtime - currtime
-        currtime = newtime
-        print "characteristic path length",delta
+    if not limited:
+        if weighted:
+            distance = bct.bct.distance_bin(mat) # Of note, weighted distance not currently used because algorithm requires length matrix (smaller numbers indicate stronger connection) as opposed to weights
+        else:
+            distance = bct.bct.distance_bin(mat)
+        cp = bct.bct.charpath(distance) # returns charpath,efficiency,ecc,radius,diameter
+        measures["charpath"]=cp[0]
+        measures["global_efficiency"] = cp[1]
+        measures["eccentricity"]=cp[2]
+        measures["radius"]=cp[3]
+        measures["diameter"]=cp[4]
+        if debug_timing:
+            newtime = time.clock()
+            delta = newtime - currtime
+            currtime = newtime
+            print "characteristic path length",delta
     # Local efficiency - inverse of char path length; cannot use weighted measure as it requests a weighted distance matrix
     measures["local_efficiency"]=bct.bct.efficiency_bin(mat,local=True)
     measures["mean_local_efficiency"] = np.mean(measures["local_efficiency"])
@@ -326,21 +329,23 @@ def network_measures(mat,weighted=False,gamma=1.0):
         currtime = newtime
         print "Local efficiency ",delta
     # modularity
-    mod = bct.bct.modularity_louvain_und(mat,gamma)
-    measures["modularity"] = mod[1]
-    measures["community_structure"] = mod[0]
-    if debug_timing:
-        newtime = time.clock()
-        delta = newtime - currtime
-        currtime = newtime
-        print "modularity",delta
+    if not limited:
+        mod = bct.bct.modularity_louvain_und(mat,gamma)
+        measures["modularity"] = mod[1]
+        measures["community_structure"] = mod[0]
+        if debug_timing:
+            newtime = time.clock()
+            delta = newtime - currtime
+            currtime = newtime
+            print "modularity",delta
     # Giant component
-    measures["giant_component"] = np.max(bct.bct.get_components(mat)[1])
-    if debug_timing:
-        newtime = time.clock()
-        delta = newtime - currtime
-        currtime = newtime
-        print "Giant component",delta
+    if not limited:
+        measures["giant_component"] = np.max(bct.bct.get_components(mat)[1])
+        if debug_timing:
+            newtime = time.clock()
+            delta = newtime - currtime
+            currtime = newtime
+            print "Giant component",delta
     # TODO: Ratio of mean clustering coefficient to mean clustering coefficient in randomly wired network with same degree distribution (C/C_{ran})
     # Ratio of C/C_ran to L/L_ran (L_ran is characteristic path length of randomly wired network with same degree distribution)
 
@@ -444,6 +449,29 @@ def write_ROI_node_file(loadfile,writefile,coloring_list,poi_list):
             f.write(str(item)+'\t')
         f.write('\n')
     f.close()
+
+def network_measures_helper_generator(args):
+    """
+        Used for multiprocessing; optional dictionary with keys 'weighted', 'limited', 'gamma'
+        Returns:
+            partial function with above args filled in, only requiring mat
+    """
+    return partial(network_measures,**args)
+
+def parallel_function(f):
+    def easy_parallelize(f, sequence,pool_size=8):
+        """ assumes f takes sequence as input, easy w/ Python's scope """
+        from multiprocessing import Pool
+        pool = Pool(processes=pool_size) # depends on available cores
+        result = pool.map(f, sequence) # for i in sequence: result[i] = f(i)
+        cleaned = [x for x in result if not x is None] # getting results
+        cleaned = np.asarray(cleaned)
+        pool.close() # not optimal! but easy
+        pool.join()
+        return cleaned
+    from functools import partial
+    return partial(easy_parallelize, f)
+
 
 if __name__ == '__main__':
     mat_control,mask_control = load_patients([control_folder+'/'+i+'/'+filename for i in control]) # will be mat[x][y][i] where i is trial, x and y represent the correlation adjacency matrix for that patient on the Power 264 node setup

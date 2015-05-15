@@ -10,8 +10,12 @@ control_folder = corr.control_folder
 control = corr.control
 population_folder = corr.population_folder
 population = corr.population
-filename = 'corr_rois_pearson_new_r.txt'
+filename = 'corr_rois_pearson_new_r_v2.txt'
 
+debug_timing = True
+if debug_timing:
+    import time
+    currtime = time.clock()
 names = [control,population]
 everyone = [] # [0] is control supermatrix, [1] is population; format: [n][x][y][i]
 everyone_mask = []
@@ -21,6 +25,11 @@ everyone_mask.append(mask)
 mat,mask = corr.load_patients([population_folder+'/'+i+'/'+filename for i in population])
 everyone.append(mat)
 everyone_mask.append(mask)
+if debug_timing:
+    newtime = time.clock()
+    delta = newtime - currtime
+    currtime = newtime
+    print "load matrices",delta
 
 # mapping the adjacency matrices
 everyone_mapped = [] # WARNING: changes format from everyone; [n][i][x][y] where n is population as above, i is pt, x,y are adjacency matrix
@@ -35,15 +44,27 @@ for i in range(0,len(everyone)): # pick group (control vs pop)
     for j in range(0,len(everyone[i][0,0,:])): # pick patient
         pop.append(corr.map_adjacency_matrix(everyone[i][:,:,j],map_technique,percentile=percentile,beta=beta))
     everyone_mapped.append(pop)
+if debug_timing:
+    newtime = time.clock()
+    delta = newtime - currtime
+    currtime = newtime
+    print "map matrices",delta
 
 # generate stats
 everyone_stats = [] # [n][dict]
 for i in range(0,len(everyone_mapped)):
-    pop_stats = []
-    for j in range(0,len(everyone_mapped[i])):
-        pop_stats.append(corr.network_measures(everyone_mapped[i][j],weighted=weighted))
+    func = corr.network_measures_helper_generator({'weighted':weighted,'limited':True})
+    pop_stats = map(func,everyone_mapped[i]) # mapped version of prior for loop, serial, works well
+    #parallel_func = corr.parallel_function(func) # DOES NOT WORK CURRENTLY, likely due to memory inefficiency in the centrality measure calculations in BCT
+    #pop_stats = parallel_func(everyone_mapped[i],pool_size=2)
+
     everyone_stats.append(pop_stats)
 
+if debug_timing:
+    newtime = time.clock()
+    delta = newtime - currtime
+    currtime = newtime
+    print "generate stats",delta
 global_measures = []
 local_measures = []
 
@@ -54,26 +75,33 @@ for k,v in everyone_stats[0][0].iteritems():
     else:
         global_measures.append(k)
 
-global_measures.remove("num_edges")
-global_measures.remove("num_vertices")
-global_measures.remove("mean_degree")
-global_measures.remove("assortativity_binary")
-global_measures.remove("mean_assortativity_binary")
-local_measures.remove("eccentricity")
-local_measures.remove("community_structure")
+if "num_edges" in global_measures: global_measures.remove("num_edges")
+if "num_vertices" in global_measures: global_measures.remove("num_vertices")
+if "mean_degree" in global_measures: global_measures.remove("mean_degree")
+if "assortativity_binary" in global_measures: global_measures.remove("assortativity_binary")
+if "mean_assortativity_binary" in global_measures: global_measures.remove("mean_assortativity_binary")
+if "eccentricity" in local_measures: local_measures.remove("eccentricity")
+if "community_structure" in local_measures: local_measures.remove("community_structure")
 if map_technique==corr.SOFT:
-    global_measures.remove("mean_assortativity_weighted")
-    global_measures.remove("assortativity_weighted")
-    global_measures.remove("global_efficiency")
-    global_measures.remove("giant_component")
-    global_measures.remove("diameter")
-    global_measures.remove("radius")
-    global_measures.remove("charpath")
-    local_measures.remove("degree")
-    local_measures.remove("betweenness_binary")
+    if "mean_assortativity_weighted" in     global_measures:     global_measures.remove("mean_assortativity_weighted")
+    if "assortativity_weighted" in global_measures:     global_measures.remove("assortativity_weighted")
+    if "global_efficiency" in global_measures:     global_measures.remove("global_efficiency")
+    if "giant_component" in global_measures:     global_measures.remove("giant_component")
+    if "diameter" in global_measures:     global_measures.remove("diameter")
+    if "radius" in global_measures:     global_measures.remove("radius")
+    if "charpath" in global_measures:     global_measures.remove("charpath")
+    if "degree" in local_measures:     local_measures.remove("degree")
+    if "betweenness_binary" in local_measures:     local_measures.remove("betweenness_binary")
+local_measures.sort()
+global_measures.sort()
+
+if debug_timing:
+    newtime = time.clock()
+    delta = newtime - currtime
+    currtime = newtime
+    print "calculate network measures",delta
 
 # remainder of code assumes that everyone.* arrays have only 2 entries, control = 0, pop = 1
-
 # compare global measures
 print "{:30s} {:>10s}{:>10s}{:>10s}{:>10s}{:>10s}{:>10s}".format("key","mean_c","mean_p","std_c","std_p","t-score","p-value")
 for key in global_measures:
@@ -82,6 +110,7 @@ for key in global_measures:
     s = stats.ttest_ind(control,population)
     print "{:30s} {:10.4f}{:10.4f}{:10.4f}{:10.4f}{:10.4f}{:10.4f}".format(key[:30], np.mean(control),np.mean(population),np.std(control),np.std(population),s[0],s[1])
 
+"""
 # compare local measures at specified ROIs
 rois = ["l_amygdala","r_amygdala","l_subgenual"]
 read='ROI_nodes_new_v2.node'
@@ -101,6 +130,12 @@ for i in range(0,len(roi_index)):
         print "{:30s} {:10.4f}{:10.4f}{:10.4f}{:10.4f}{:10.4f}{:10.4f}".format(key[:30], np.mean(control),np.mean(population),np.std(control),np.std(population),s[0],s[1])
 
 
+if debug_timing:
+    newtime = time.clock()
+    delta = newtime - currtime
+    currtime = newtime
+    print "calculate measures",delta
+"""
 
 """
 # write out all local measures in 1 file per subject, 1 line per ROI
@@ -116,6 +151,12 @@ for i in range(0,len(everyone_stats)):
             f.write(str(k)+','+','.join([str(everyone_stats[i][j][measure][k]) for measure in all_measures])+'\n')
         print out_filename
         f.close()
+
+if debug_timing:
+    newtime = time.clock()
+    delta = newtime - currtime
+    currtime = newtime
+    print "write matrices to file",delta
 """
 
 """

@@ -1,4 +1,4 @@
-nodemeasures <- list.files("/Volumes/Serena/SPECC/Neil/bpd_rest/neil/stats_output", full.names=TRUE)
+nodemeasures <- list.files("/Volumes/Serena/SPECC/Neil/bpd_rest/neil/stats_output_v2", pattern='^[01]',full.names=TRUE)
 setwd("~/Data_Analysis/bpd_rest")
 library(ggplot2)
 library(reshape2)

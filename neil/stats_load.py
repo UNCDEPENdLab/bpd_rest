@@ -48,7 +48,7 @@ for i in controls:
     reader = csv.reader(f)
     data = [r for r in reader]
     measures = data.pop(0)
-    data = np.array([[float(j) for j in i] for i in data])
+    data = np.array([[float(j) for j in k] for k in data])
     f.close()
     con.append(data)
 for i in population:
@@ -56,7 +56,7 @@ for i in population:
     reader = csv.reader(f)
     data = [r for r in reader]
     measures = data.pop(0)
-    data = np.array([[float(j) for j in i] for i in data])
+    data = np.array([[float(j) for j in k] for k in data])
     f.close()
     pop.append(data)
 con = np.array(con)
