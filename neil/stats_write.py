@@ -45,6 +45,7 @@ def write_subject(adj,techniques,filename):
     output: none (writes to file)
     """
     f = open(filename,'w')
+    f.write('edge_def,parameter,roi,statistic,value\n')
     for t,p,b in techniques:
         mapped = corr.map_adjacency_matrix(adj,t,percentile=p,beta=b)
         weighted = False if t == corr.HARD else True
