@@ -22,26 +22,29 @@ graph_measures <- grep('HARD_0.*',names(allsubjs),value=TRUE)
 graph_measures <- c(graph_measures,grep('SOFT.*(pagerank|eigenvector|local).*',names(allsubjs),value=TRUE))
 #graph_measures <- names(allsubjs[!names(allsubjs) %in% c("id", "roi")])
 
-pr <- prcomp(allsubjs[,graph_measures], scale.=TRUE)
-sum(pr$sdev)
-cumvariance <- (cumsum((pr$sdev)^2) / sum(pr$sdev^2))
-print(cumvariance)
-pr$rotation #varimax or promax rotation if you need to interpret this
+#pr <- prcomp(allsubjs[,graph_measures], scale.=TRUE)
+#sum(pr$sdev)
+#cumvariance <- (cumsum((pr$sdev)^2) / sum(pr$sdev^2))
+#print(cumvariance)
+#pr$rotation #varimax or promax rotation if you need to interpret this
 
 ####
+# Not needed, as it turns out, as psych->principal appears to scale by default
+allsubjs.scaled = cbind(scale(allsubjs[,graph_measures]),allsubjs[,c('id','roi')])
 
 #promax for oblique, varimax for orthogonal rotation
-f1 <- principal(allsubjs[,graph_measures], nfactors=3, rotate="varimax")
+f1 <- principal(allsubjs.scaled[,graph_measures], nfactors=3, rotate="varimax",scores=TRUE)
+#f1 <- principal(allsubjs.scaled[,graph_measures], nfactors=3, rotate="promax")
 f1
 
 #with thresholded loadings
 print(f1$loadings, cutoff=0.25)
 
-pattype = ifelse(allsubjs$id > "0" & allsubjs$id < "1",0,1) # 0 = patient, 1 = control (consistent with file name, not with common understanding
+pattype = ifelse(allsubjs.scaled$id > "0" & allsubjs.scaled$id < "1",0,1) # 0 = patient, 1 = control (consistent with file name, not with common understanding
 
 #add the PC scores onto the original dataset
 
-dataset <- cbind(allsubjs, f1$scores,pattype)
+dataset <- cbind(allsubjs.scaled, f1$scores,pattype)
 
 components = colnames(f1$scores)
 
@@ -79,7 +82,7 @@ for (i in 1:length(all_rois)){
 	values[i,]=(permutation.test(data,components))
 }
 values = cbind(all_rois,values)
-values[values[,'PC1']<0.05 | values[,'PC2'] < 0.05 | values[,'PC3'] < 0.05,]
+values[values[,'RC1']<0.05 | values[,'RC2'] < 0.05 | values[,'RC3'] < 0.05,]
 
 graph.hist <- function(one,two,breaks=10) {
 	p1 = hist(one,breaks=breaks,plot=FALSE)
@@ -88,6 +91,7 @@ graph.hist <- function(one,two,breaks=10) {
 	plot(p2,col=rgb(1,0,0,1/4),add=T)
 }
 
-graph.hist(dataset[dataset$pattype==1,'PC1'],dataset[dataset$pattype==0,'PC2'],breaks=100)
-graph.hist(dataset[dataset$pattype==1 & dataset$roi == 1,'PC1'],dataset[dataset$pattype==0 & dataset$roi == 1,'PC2'],breaks=10)
+
+graph.hist(dataset[dataset$pattype==1,'RC1'],dataset[dataset$pattype==0,'RC1'],breaks=100)
+graph.hist(dataset[dataset$pattype==1 & dataset$roi == 1,'RC2'],dataset[dataset$pattype==0 & dataset$roi == 1,'RC2'],breaks=10)
 
