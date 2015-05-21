@@ -22,26 +22,29 @@ graph_measures <- grep('HARD_0.*',names(allsubjs),value=TRUE)
 graph_measures <- c(graph_measures,grep('SOFT.*(pagerank|eigenvector|local).*',names(allsubjs),value=TRUE))
 #graph_measures <- names(allsubjs[!names(allsubjs) %in% c("id", "roi")])
 
-pr <- prcomp(allsubjs[,graph_measures], scale.=TRUE)
-sum(pr$sdev)
-cumvariance <- (cumsum((pr$sdev)^2) / sum(pr$sdev^2))
-print(cumvariance)
-pr$rotation #varimax or promax rotation if you need to interpret this
+#pr <- prcomp(allsubjs[,graph_measures], scale.=TRUE)
+#sum(pr$sdev)
+#cumvariance <- (cumsum((pr$sdev)^2) / sum(pr$sdev^2))
+#print(cumvariance)
+#pr$rotation #varimax or promax rotation if you need to interpret this
 
 ####
+# Not needed, as it turns out, as psych->principal appears to scale by default
+allsubjs.scaled = cbind(scale(allsubjs[,graph_measures]),allsubjs[,c('id','roi')])
 
 #promax for oblique, varimax for orthogonal rotation
-f1 <- principal(allsubjs[,graph_measures], nfactors=3, rotate="varimax")
+f1 <- principal(allsubjs.scaled[,graph_measures], nfactors=3, rotate="varimax",scores=TRUE)
+#f1 <- principal(allsubjs.scaled[,graph_measures], nfactors=3, rotate="promax")
 f1
 
 #with thresholded loadings
 print(f1$loadings, cutoff=0.25)
 
-pattype = ifelse(allsubjs$id > "0" & allsubjs$id < "1",0,1) # 0 = patient, 1 = control (consistent with file name, not with common understanding
+pattype = ifelse(allsubjs.scaled$id > "0" & allsubjs.scaled$id < "1",0,1) # 0 = patient, 1 = control (consistent with file name, not with common understanding
 
 #add the PC scores onto the original dataset
 
-dataset <- cbind(allsubjs, f1$scores,pattype)
+dataset <- cbind(allsubjs.scaled, f1$scores,pattype)
 
 components = colnames(f1$scores)
 
@@ -79,15 +82,77 @@ for (i in 1:length(all_rois)){
 	values[i,]=(permutation.test(data,components))
 }
 values = cbind(all_rois,values)
-values[values[,'PC1']<0.05 | values[,'PC2'] < 0.05 | values[,'PC3'] < 0.05,]
+values[values[,'RC1']<0.05 | values[,'RC2'] < 0.05 | values[,'RC3'] < 0.05,]
 
 graph.hist <- function(one,two,breaks=10) {
 	p1 = hist(one,breaks=breaks,plot=FALSE)
 	p2 = hist(two,breaks=breaks,plot=FALSE)
-	plot(p1,col=rgb(0,0,1,1/4))
-	plot(p2,col=rgb(1,0,0,1/4),add=T)
+	xlim <- range(p1$breaks,p2$breaks)
+	ylim <- range(0,p1$density,p2$density)
+	plot(p1,col=rgb(0,0,1,1/4),xlim = xlim, ylim = ylim,freq = FALSE)
+	plot(p2,col=rgb(1,0,0,1/4),add=TRUE,xlim=xlim, ylim=ylim,freq=FALSE)
+}
+graph.density <- function(one,two,labelOne = "One",labelTwo="Two",main = "Density") {
+	p1 = density(one)
+	p2 = density(two)
+	xlim <- range(p1$x,p2$x)
+	ylim <- range(0,p1$y,p2$y)
+	oneCol <- rgb(0,0,1,0.2)
+	twoCol <- rgb(1,0,0,0.2)
+	plot(p1,xlim=xlim,ylim = ylim,panel.first = grid(),main=main)
+	polygon(p1,density = -1, col = oneCol)
+	polygon(p2,density = -1, col = twoCol)
+	legend('topleft',c(labelOne,labelTwo),fill = c(oneCol,twoCol),bty = 'n', border = NA)
 }
 
-graph.hist(dataset[dataset$pattype==1,'PC1'],dataset[dataset$pattype==0,'PC2'],breaks=100)
-graph.hist(dataset[dataset$pattype==1 & dataset$roi == 1,'PC1'],dataset[dataset$pattype==0 & dataset$roi == 1,'PC2'],breaks=10)
 
+
+library(data.table)
+outlierReplace = function(dataframe, cols, rows, newValue = NA) {
+	if (any(rows)) {
+		set(dataframe, rows, cols, newValue)
+	}
+}
+
+outlierReplace(dataset,'RC3',which(dataset$RC3 > 6),6) # INVESTIGATE FURTHER
+outlierReplace(dataset,'RC2',which(dataset$RC2 > 6),6) # Due to local_efficiency outliers in the power-law edge definition group
+
+pat = dataset[dataset$pattype == 0,]
+control = dataset[dataset$pattype == 1,]
+
+results = matrix(,length(all_rois),length(components))
+for (i in 1 : length(all_rois)){
+	for (j in 1: length(components)){
+		t1 = control[control$roi == all_rois[i],components[j]]
+		t2 = pat[pat$roi == all_rois[i],components[j]]
+		t = t.test(t1,t2)
+		results[i,j] = t$p.value
+	}
+}
+colnames(results) = components
+results = cbind(all_rois,results)
+interesting_rows = results[results[,'RC1']<0.01 | results[,'RC2'] < 0.01 | results[,'RC3'] < 0.01,]
+
+if ( FALSE){
+graph.hist(dataset[dataset$pattype==1,'RC1'],dataset[dataset$pattype==0,'RC1'],breaks=100)
+graph.hist(dataset[dataset$pattype==1 & dataset$roi == 1,'RC2'],dataset[dataset$pattype==0 & dataset$roi == 1,'RC2'],breaks=10)
+graph.hist(dataset[dataset$pattype==1 & dataset$roi == 253,'RC1'],dataset[dataset$pattype==0 & dataset$roi == 253,'RC1'],breaks=20)
+graph.hist(dataset[dataset$pattype==0 & dataset$roi == 263,'RC2'],dataset[dataset$pattype==1 & dataset$roi == 263,'RC2'],breaks=20)
+graph.density(dataset[dataset$pattype==0 & dataset$roi == 263,'RC2'],dataset[dataset$pattype==1 & dataset$roi == 263,'RC2'],breaks=20)
+t.test(pat[pat$roi == 263,'SOFT_10_local_efficiency'],control[control$roi==263,'SOFT_10_local_efficiency'])
+var.test(pat[pat$roi == 263,'RC2'],control[control$roi==263,'RC2'])
+graph.density(dataset$SOFT_14_local_efficiency,dataset[dataset$RC2>=6,'SOFT_14_local_efficiency']) # outliers on RC2
+graph.density(dataset$HARD_0.95_betweenness_binary,dataset[dataset$RC3>=6,'HARD_0.95_betweenness_binary']) # outliers on RC3
+
+for (i in 1:length(interesting_rows[,'all_rois'])){
+	par(mfrow=c(3,1))
+	roi = interesting_rows[i,'all_rois']
+	for (j in 1:length(components)){
+		graph.density(control[control$roi==roi,components[j]],pat[pat$roi==roi,components[j]],labelOne="control",labelTwo="patient",main=sprintf("%d: %s, p=%f",roi,components[j],interesting_rows[i,components[j]]))
+	}
+	readline()
+}
+dev.off()
+
+
+}
