@@ -5,10 +5,10 @@ def distance(x1,y1,z1,x2,y2,z2):
 
 common_roi = {"l_amygdala":[-24,-8,-18],"r_amygdala":[24,-8,-18],"r_subgenual":[2,25,-13],"l_subgenual":[-2,25,-13]}
 
-"""
-Finds point in 3d space closest to the poi 3-tuple (x,y,z), returns the index of the value and the distance
-"""
 def find_closest(poi,arr):
+    """
+    Finds point in 3d space closest to the poi 3-tuple (x,y,z), returns the index of the value and the distance
+    """
     index = 0
     x = poi[0]
     y = poi[1]

@@ -82,7 +82,7 @@ for (i in 1:length(all_rois)){
 	values[i,]=(permutation.test(data,components))
 }
 values = cbind(all_rois,values)
-values[values[,'RC1']<0.05 | values[,'RC2'] < 0.05 | values[,'RC3'] < 0.05,]
+values[values[,components[1]]<0.05 | values[,components[2]] < 0.05 | values[,components[3]] < 0.05,]
 
 graph.hist <- function(one,two,breaks=10) {
 	p1 = hist(one,breaks=breaks,plot=FALSE)
@@ -114,8 +114,8 @@ outlierReplace = function(dataframe, cols, rows, newValue = NA) {
 	}
 }
 
-outlierReplace(dataset,'RC3',which(dataset$RC3 > 6),6) # INVESTIGATE FURTHER
-outlierReplace(dataset,'RC2',which(dataset$RC2 > 6),6) # Due to local_efficiency outliers in the power-law edge definition group
+outlierReplace(dataset,'PC3',which(dataset$PC3 > 6),6) # INVESTIGATE FURTHER
+outlierReplace(dataset,'PC2',which(dataset$PC2 > 6),6) # Due to local_efficiency outliers in the power-law edge definition group
 
 pat = dataset[dataset$pattype == 0,]
 control = dataset[dataset$pattype == 1,]
@@ -131,18 +131,18 @@ for (i in 1 : length(all_rois)){
 }
 colnames(results) = components
 results = cbind(all_rois,results)
-interesting_rows = results[results[,'RC1']<0.01 | results[,'RC2'] < 0.01 | results[,'RC3'] < 0.01,]
+interesting_rows = results[results[,'PC1']<0.01 | results[,'PC2'] < 0.01 | results[,'PC3'] < 0.01,]
 
 if ( FALSE){
-graph.hist(dataset[dataset$pattype==1,'RC1'],dataset[dataset$pattype==0,'RC1'],breaks=100)
-graph.hist(dataset[dataset$pattype==1 & dataset$roi == 1,'RC2'],dataset[dataset$pattype==0 & dataset$roi == 1,'RC2'],breaks=10)
-graph.hist(dataset[dataset$pattype==1 & dataset$roi == 253,'RC1'],dataset[dataset$pattype==0 & dataset$roi == 253,'RC1'],breaks=20)
-graph.hist(dataset[dataset$pattype==0 & dataset$roi == 263,'RC2'],dataset[dataset$pattype==1 & dataset$roi == 263,'RC2'],breaks=20)
-graph.density(dataset[dataset$pattype==0 & dataset$roi == 263,'RC2'],dataset[dataset$pattype==1 & dataset$roi == 263,'RC2'],breaks=20)
+graph.hist(dataset[dataset$pattype==1,'PC1'],dataset[dataset$pattype==0,'PC1'],breaks=100)
+graph.hist(dataset[dataset$pattype==1 & dataset$roi == 1,'PC2'],dataset[dataset$pattype==0 & dataset$roi == 1,'PC2'],breaks=10)
+graph.hist(dataset[dataset$pattype==1 & dataset$roi == 253,'PC1'],dataset[dataset$pattype==0 & dataset$roi == 253,'PC1'],breaks=20)
+graph.hist(dataset[dataset$pattype==0 & dataset$roi == 263,'PC2'],dataset[dataset$pattype==1 & dataset$roi == 263,'PC2'],breaks=20)
+graph.density(dataset[dataset$pattype==0 & dataset$roi == 263,'PC2'],dataset[dataset$pattype==1 & dataset$roi == 263,'PC2'],breaks=20)
 t.test(pat[pat$roi == 263,'SOFT_10_local_efficiency'],control[control$roi==263,'SOFT_10_local_efficiency'])
-var.test(pat[pat$roi == 263,'RC2'],control[control$roi==263,'RC2'])
-graph.density(dataset$SOFT_14_local_efficiency,dataset[dataset$RC2>=6,'SOFT_14_local_efficiency']) # outliers on RC2
-graph.density(dataset$HARD_0.95_betweenness_binary,dataset[dataset$RC3>=6,'HARD_0.95_betweenness_binary']) # outliers on RC3
+var.test(pat[pat$roi == 263,'PC2'],control[control$roi==263,'PC2'])
+graph.density(dataset$SOFT_14_local_efficiency,dataset[dataset$PC2>=6,'SOFT_14_local_efficiency']) # outliers on PC2
+graph.density(dataset$HARD_0.95_betweenness_binary,dataset[dataset$PC3>=6,'HARD_0.95_betweenness_binary']) # outliers on PC3
 
 for (i in 1:length(interesting_rows[,'all_rois'])){
 	par(mfrow=c(3,1))
@@ -154,5 +154,22 @@ for (i in 1:length(interesting_rows[,'all_rois'])){
 }
 dev.off()
 
+outliers = which(dataset$PC2>= 6 | dataset$PC3>=6)
+subset_measures = grep('HARD_0.95|SOFT_12',graph_measures,value=TRUE)
+for (i in 1:length(outliers)){
+	par(mfrow=c(4,3))
+	row = dataset[outliers[i],]
+	roi = row$roi
+	for (j in 1:length(subset_measures)){
+		#graph.density(control[control$roi==roi,subset_measures[j]],pat[pat$roi==roi,subset_measures[j]],labelOne="control",labelTwo="patient",main=sprintf("%d: %s",roi,subset_measures[j]))
+		graph.density(dataset[,subset_measures[j]],dataset[dataset$roi==roi,subset_measures[j]],labelOne="dataset",labelTwo="roi",main=sprintf("%d: %s",roi,subset_measures[j]))
+	}
+	for (j in 1:length(components)){
+		#graph.density(control[control$roi==roi,components[j]],pat[pat$roi==roi,components[j]],labelOne="control",labelTwo="patient",main=sprintf("%d: %s, p=%f",roi,components[j],row[components[j]]))
+		graph.density(dataset[,components[j]],dataset[dataset$roi==roi,components[j]],labelOne="dataset",labelTwo="roi",main=sprintf("%d: %s, p=%f",roi,components[j],row[components[j]]))
+	}
+	readline()
+}
+dev.off()
 
 }
