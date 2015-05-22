@@ -18,20 +18,20 @@ population= ['008JH_13JAN2014', '013jk_30Apr2014', '015cw_03May2014', '018LQ_26M
 #filename = 'corr_roimean_pearson.txt' # robust vs pearson
 filename = 'corr_rois_pearson_new_r_v2.txt' # robust vs pearson
 
-"""
-Correlation matrix graphical generation
-"""
 def draw_corr_matrix(arr,show=True):
+    """
+    Correlation matrix graphical generation
+    """
     arr_np = np.array(arr)
     pylab.pcolor(arr_np)
     pylab.colorbar()
     if show:
         pylab.show()
 
-"""
-Returns the 2d array sorted by the index list; primary use is to sort communities together
-"""
 def sort2d(arr,sorter_index):
+    """
+    Returns the 2d array sorted by the index list; primary use is to sort communities together
+    """
     sorter = sorted(zip (sorter_index,range(0,len(sorter_index))))
     new_arr = []
     for i in range(0,len(arr)):
@@ -40,10 +40,10 @@ def sort2d(arr,sorter_index):
             new_arr[i].append(arr[sorter[i][1]][sorter[j][1]])
     return new_arr
 
-"""
-Prints 2d array prettily, cutting off values as needed to fit in small space. Roughly assumes all rows have same number of columns
-"""
 def pretty_print_2d(arr,vsize = 10,hsize=10, integer = False):
+    """
+    Prints 2d array prettily, cutting off values as needed to fit in small space. Roughly assumes all rows have same number of columns
+    """
     if len(arr) <= vsize:
         vertical_filler = False
     else:
@@ -84,11 +84,11 @@ def pretty_print_2d(arr,vsize = 10,hsize=10, integer = False):
         print
 
 
-"""
-Loads each patient into the mat array (mat[x][y][i] where i is the patient, x and y represent correlation adjacency matrix for that patient (indexed by the Power et all 2011 264 node setup). Also creates a mask to indicate specific nodes where the correlation could not be calculated
-Returns: matrix[][][],mask[][][]
-"""
 def load_patients(patient_list):
+    """
+    Loads each patient into the mat array (mat[x][y][i] where i is the patient, x and y represent correlation adjacency matrix for that patient (indexed by the Power et all 2011 264 node setup). Also creates a mask to indicate specific nodes where the correlation could not be calculated
+    Returns: matrix[][][],mask[][][]
+    """
     mat = []
     mask = []
     for i in patient_list:
@@ -115,17 +115,17 @@ def load_patients(patient_list):
                 mask[x][y].append(patmask[x][y])
     return np.array(mat),np.array(mask)
 
-"""
-Creates an averaged 2D array over all patients, zeroes the diagonal. Requires
-matrix[][][] as well as boolean mask[][][]. Returns averaged array[][].
-Averages over all data points minus the masked out entries; will throw
-exception if there is no valid element at a single node. Would caution using
-with low number data sets as with even a few masked entries, the averaged data
-point will be swung by as little as one remaining entry; may cause problems in
-analysis later; todo: create a separate 2d array with total N for each data
-point
-"""
 def average_patients(mat,mask):
+    """
+    Creates an averaged 2D array over all patients, zeroes the diagonal. Requires
+    matrix[][][] as well as boolean mask[][][]. Returns averaged array[][].
+    Averages over all data points minus the masked out entries; will throw
+    exception if there is no valid element at a single node. Would caution using
+    with low number data sets as with even a few masked entries, the averaged data
+    point will be swung by as little as one remaining entry; may cause problems in
+    analysis later; todo: create a separate 2d array with total N for each data
+    point
+    """
     avg = []
     for x in range(0,len(mat)):
         avg.append([])
@@ -144,16 +144,16 @@ def average_patients(mat,mask):
 
 
 
-"""
-Creates sparsified igraph Graph by putting all correlation data in a one dimensional
-matrix and taking only highest percentile edges (tie density). Requires the
-correlation matrix (recommended 0'd diagonal), percentile for cutoff (100 minus
-tie-density), and takes optional argument to include weighted edges or binary.
-Returns igraph Graph object and numpy array representing the sparsified matrix
-
-Note: can be used to generate a graph with all edges intact if percentile is given as 0
-"""
 def create_graph(avg,percentile=0,weighted=True):
+    """
+    Creates sparsified igraph Graph by putting all correlation data in a one dimensional
+    matrix and taking only highest percentile edges (tie density). Requires the
+    correlation matrix (recommended 0'd diagonal), percentile for cutoff (100 minus
+    tie-density), and takes optional argument to include weighted edges or binary.
+    Returns igraph Graph object and numpy array representing the sparsified matrix
+
+    Note: can be used to generate a graph with all edges intact if percentile is given as 0
+    """
     G = ig.Graph()
     G.add_vertices(len(avg))
     sparsed = copy.deepcopy(avg)
@@ -182,28 +182,28 @@ def create_graph(avg,percentile=0,weighted=True):
 HARD = 0
 HARD_WEIGHTED = 1
 SOFT = 3
-"""
-Creates a mapped adjacency matrix.
-
-Input: 
-    mat: 2D n x n adjacency matrix, preferably n range [-1,1] (only important for
-        continuous power-law distribution
-    map_type: HARD (default)| HARD_WEIGHTED | SOFT
-        HARD applies a hard threshold (above which an unweighted edge is placed)
-        HARD_WEIGHTED applies threshold (above which a weighted edge has weight = r)
-        SOFT applies continuous power function ((r+1)/2)^beta to map r from [-1,1] to [0,1]
-            beta of  1 degenerates to simple linear weighting (but mapping -1,1 to 0,)
-    threshold (required if using HARD or HARD_WEIGHTED)
-    beta (required if using SOFT)
-    percentile: if defined, will supercede threshold; range [0-1]. Will return
-        a hard/hard_weighted matrix with approximately ((1-percentile)*100)% of
-        original edges; 1-percentile is tie-density. Can be used to generate a
-        "equi-sparse" networks across patients, as opposed to "equi-threshold"
-
-Output:
-    adj: 2D n x n adjacency matrix; if HARD, it is binary, else it is float with range [0,1] (only guranteed if input data is [-1,1]
-"""
 def map_adjacency_matrix(mat, map_type, threshold = -2, beta = -2, percentile = -2):
+    """
+    Creates a mapped adjacency matrix.
+
+    Input: 
+        mat: 2D n x n adjacency matrix, preferably n range [-1,1] (only important for
+            continuous power-law distribution
+        map_type: HARD (default)| HARD_WEIGHTED | SOFT
+            HARD applies a hard threshold (above which an unweighted edge is placed)
+            HARD_WEIGHTED applies threshold (above which a weighted edge has weight = r)
+            SOFT applies continuous power function ((r+1)/2)^beta to map r from [-1,1] to [0,1]
+                beta of  1 degenerates to simple linear weighting (but mapping -1,1 to 0,)
+        threshold (required if using HARD or HARD_WEIGHTED)
+        beta (required if using SOFT)
+        percentile: if defined, will supercede threshold; range [0-1]. Will return
+            a hard/hard_weighted matrix with approximately ((1-percentile)*100)% of
+            original edges; 1-percentile is tie-density. Can be used to generate a
+            "equi-sparse" networks across patients, as opposed to "equi-threshold"
+
+    Output:
+        adj: 2D n x n adjacency matrix; if HARD, it is binary, else it is float with range [0,1] (only guranteed if input data is [-1,1]
+    """
     global HARD, HARD_WEIGHTED, SOFT
     if ( (map_type == HARD or map_type == HARD_WEIGHTED) and threshold == -2 and percentile == -2):
         raise TypeError("Hard thresholded graphs require either a threshold or a percentile")
@@ -246,21 +246,21 @@ def map_adjacency_matrix(mat, map_type, threshold = -2, beta = -2, percentile = 
         return np.array(adj).astype(int)
     return np.array(adj)
 
-"""
-Returns a dictionary of network statistics, including but not limited to: node
-degree, clustering coefficient, assortativity, local/global efficiency,
-modularity. Also returns centrality measures such as PageRank, betweenness
-centrality, etc.
-
-Input:
-    mat: n x n 2D adjacency matrix, preferably with 0's on diagonal. Range [0,1] (non-negative weights).
-    weighted: Default False; modifies whichever calculations to indicate that the matrix has weighted vertices
-    gamma (opt): passed to modularity/community structure methods, lower than 1 preferentially searches for larger modules
-
-Output:
-    dictionary with the statistic names as keys, results/arrays as values
-"""
 def network_measures(mat,weighted=False,limited=False,gamma=1.0):
+    """
+    Returns a dictionary of network statistics, including but not limited to: node
+    degree, clustering coefficient, assortativity, local/global efficiency,
+    modularity. Also returns centrality measures such as PageRank, betweenness
+    centrality, etc.
+
+    Input:
+        mat: n x n 2D adjacency matrix, preferably with 0's on diagonal. Range [0,1] (non-negative weights).
+        weighted: Default False; modifies whichever calculations to indicate that the matrix has weighted vertices
+        gamma (opt): passed to modularity/community structure methods, lower than 1 preferentially searches for larger modules
+
+    Output:
+        dictionary with the statistic names as keys, results/arrays as values
+    """
     debug_timing = False
     if debug_timing:
         import time
@@ -374,11 +374,11 @@ def network_measures(mat,weighted=False,limited=False,gamma=1.0):
         print "Pagerank",delta
     return measures
 
-"""
-Crude method to print a table comparing the above-generated measures between
-graphs. Gives good basic idea. Does not print lists, only singular values
-"""
 def compare_networks(arr_of_measure_dicts,names,list_of_measures = None):
+    """
+    Crude method to print a table comparing the above-generated measures between
+    graphs. Gives good basic idea. Does not print lists, only singular values
+    """
     print "{:30s}".format("measure"),
     for i in names:
         print "{:15s}".format(i[:14]),
@@ -424,19 +424,19 @@ def get_ROI_list(loadfile):
     f.close()
     return roi
 
-"""
-Writes an ROI node file for BrainNetViewer using a template file, rewriting
-coloring based on the community structure given in coloring_list, and increases
-the size of the POI list
-Input:
-    loadfile: name of file to input, contains N entries
-    writefile: name of file to output (will overwrite prior files there!)
-    coloring_list: list of length N, each entry numbered according to group
-    poi_list: list of names of ROIs which we will look up on ROI table to find appropriate ROI
-
-    todo: Eventual goal is to pass optional poi_index directly to this, bypassing the named array
-"""
 def write_ROI_node_file(loadfile,writefile,coloring_list,poi_list):
+    """
+    Writes an ROI node file for BrainNetViewer using a template file, rewriting
+    coloring based on the community structure given in coloring_list, and increases
+    the size of the POI list
+    Input:
+        loadfile: name of file to input, contains N entries
+        writefile: name of file to output (will overwrite prior files there!)
+        coloring_list: list of length N, each entry numbered according to group
+        poi_list: list of names of ROIs which we will look up on ROI table to find appropriate ROI
+
+        todo: Eventual goal is to pass optional poi_index directly to this, bypassing the named array
+    """
     roi = get_ROI_list(loadfile)
     for i in range(0,len(roi)):
         roi[i][3] = int(coloring_list[i])

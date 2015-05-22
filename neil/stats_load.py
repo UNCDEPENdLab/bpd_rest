@@ -14,17 +14,17 @@ def permutation_test(pooled,sizeZ,sizeY,one_sided = False):
     starY = pooled[-sizeY:]
     return starZ.mean() - starY.mean() if one_sided else abs(starZ.mean() - starY.mean())
 
-"""
-Runs Monte Carlo simulation of the permutation test
-Input:
-    Control np.array
-    Population np.array
-    num_samples (default 10000)
-    one_sided (default False)
-Output:
-    percentile of values outside of the given difference of means (if two-sided, will return values w/ absolute value greater than true diff
-"""
 def run_permutation_monte_carlo(control,population,num_samples=10000,one_sided=False,hist=False):
+    """
+    Runs Monte Carlo simulation of the permutation test
+    Input:
+        Control np.array
+        Population np.array
+        num_samples (default 10000)
+        one_sided (default False)
+    Output:
+        percentile of values outside of the given difference of means (if two-sided, will return values w/ absolute value greater than true diff
+    """
     pooled = np.hstack([control,population])
     delta = control.mean() - population.mean()
     estimates = np.array(map(lambda x: permutation_test(pooled,control.size,population.size,one_sided),range(num_samples)))
