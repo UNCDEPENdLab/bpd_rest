@@ -7,9 +7,9 @@ import warnings
 import pylab
 
 control_folder = corr.control_folder
-control = corr.control
+control = corr.filter_list(corr.control,corr.control_blacklist)
 population_folder = corr.population_folder
-population = corr.population
+population = corr.filter_list(corr.population,corr.population_blacklist)
 filename = 'corr_rois_pearson_new_r_v2.txt'
 
 debug_timing = True
@@ -35,9 +35,9 @@ if debug_timing:
 everyone_mapped = [] # WARNING: changes format from everyone; [n][i][x][y] where n is population as above, i is pt, x,y are adjacency matrix
 percentile,beta = -2,-2
 # comment out the undesired methods
-map_technique,percentile = corr.HARD,0.9
+#map_technique,percentile = corr.HARD,0.9
 #map_technique,percentile = corr.HARD_WEIGHTED,0.9
-#map_technique,beta = corr.SOFT,12
+map_technique,beta = corr.SOFT,12
 weighted = False if map_technique == corr.HARD else True
 for i in range(0,len(everyone)): # pick group (control vs pop)
     pop = []
@@ -53,7 +53,7 @@ if debug_timing:
 # generate stats
 everyone_stats = [] # [n][dict]
 for i in range(0,len(everyone_mapped)):
-    func = corr.network_measures_helper_generator({'weighted':weighted,'limited':True})
+    func = corr.network_measures_helper_generator({'weighted':weighted,'limited':True}) # limited limits data collection to fewer measures, particularly filtering ones out that take a long time and don't seem to have good function for this application
     pop_stats = map(func,everyone_mapped[i]) # mapped version of prior for loop, serial, works well
     #parallel_func = corr.parallel_function(func) # DOES NOT WORK CURRENTLY, likely due to memory inefficiency in the centrality measure calculations in BCT
     #pop_stats = parallel_func(everyone_mapped[i],pool_size=2)
