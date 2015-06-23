@@ -16,10 +16,16 @@ control=['10637_20140304', '10638_20140507', '10711_20140826', '10717_20140813',
 control_blacklist = ['10637_20140304','10711_20140826','11305_20140805'] # Too much motion artifact as noted by patient_generation.py
 
 population_folder = base_folder+'/SPECC'
-population= ['008JH_13JAN2014', '013jk_30Apr2014', '015cw_03May2014', '018LQ_26MAR2014', '019ec_04Aug2014', '020lr_03May2014', '023ds_07May2014', '025ay_10Jun2014', '027AD_18Sep2014', '031VN_09Sep2014', '037ll_25Aug2014', '038aa_03nov2014', '046ak_03Nov2014', '047ab_03nov2014', '048ah_18Dec2014', '049tm_17Apr2015', '050ai_06Nov2014', '0531lw_16Dec2014', '054ls_12Jan2015', '057as-09Dec2014', '058ab_15Jan2015', '059cr_08jan2015', '066dw_14Mar2015', '067sm_23Apr2015', '071eh_09Apr2015'] # removed first two (controls)
+population= ['008JH_13JAN2014', '013jk_30Apr2014', '015cw_03May2014', '018LQ_26MAR2014', '019ec_04Aug2014', '020lr_03May2014', '023ds_07May2014', '025ay_10Jun2014', '027AD_18Sep2014', '031VN_09Sep2014', '037ll_25Aug2014', '038aa_03nov2014', '046ak_03Nov2014', '047ab_03nov2014', '048ah_18Dec2014', '049tm_17Apr2015', '050ai_06Nov2014', '0531lw_16Dec2014', '054ls_12Jan2015', '057as-09Dec2014', '058ab_15Jan2015', '059cr_08jan2015', '066dw_14Mar2015', '067sm_23Apr2015', '071eh_09Apr2015'] # removed first two (controls); TODO: dynamically generate this (and control) list and add the first two items in folder to blacklist
 population_blacklist = ['023ds_07May2014','050ai_06Nov2014','0531lw_16Dec2014'] # Too much motion artifact as noted by patient_generation.py
 #filename = 'corr_roimean_pearson.txt' # robust vs pearson
 filename = 'corr_rois_pearson_new_r_v2.txt' # robust vs pearson
+
+def filter_list(orig,blacklist):
+    """
+    Returns the list with the blacklisted items deleted; ignores items not found in orig
+    """
+    return [i for i in orig if i not in blacklist]
 
 def draw_corr_matrix(arr,show=True):
     """
