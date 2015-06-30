@@ -4,7 +4,7 @@ library(lattice)
 library(reshape2)
 library(psych)
 
-nodemeasures <- list.files("/Volumes/Serena/SPECC/Neil/bpd_rest/neil/stats_output_v2/", pattern='^[01]',full.names=TRUE)
+nodemeasures <- list.files("/Volumes/Serena/SPECC/Neil/bpd_rest/neil/stats_output_v3/", pattern='^[01]',full.names=TRUE)
 #nodemeasures = nodemeasures[1:2]
 
 allsubjs <- c()
@@ -131,14 +131,15 @@ for (i in 1 : length(all_rois)){
 }
 colnames(results) = components
 results = cbind(all_rois,results)
-interesting_rows = results[results[,'PC1']<0.01 | results[,'PC2'] < 0.01 | results[,'PC3'] < 0.01,]
+alpha = 0.05 / length(results)
+interesting_rows = results[results[,'PC1']<alpha | results[,'PC2'] < alpha | results[,'PC3'] < alpha,]
 
 if ( FALSE){
 graph.hist(dataset[dataset$pattype==1,'PC1'],dataset[dataset$pattype==0,'PC1'],breaks=100)
 graph.hist(dataset[dataset$pattype==1 & dataset$roi == 1,'PC2'],dataset[dataset$pattype==0 & dataset$roi == 1,'PC2'],breaks=10)
 graph.hist(dataset[dataset$pattype==1 & dataset$roi == 253,'PC1'],dataset[dataset$pattype==0 & dataset$roi == 253,'PC1'],breaks=20)
 graph.hist(dataset[dataset$pattype==0 & dataset$roi == 263,'PC2'],dataset[dataset$pattype==1 & dataset$roi == 263,'PC2'],breaks=20)
-graph.density(dataset[dataset$pattype==0 & dataset$roi == 263,'PC2'],dataset[dataset$pattype==1 & dataset$roi == 263,'PC2'],breaks=20)
+graph.density(dataset[dataset$pattype==0 & dataset$roi == 263,'PC2'],dataset[dataset$pattype==1 & dataset$roi == 263,'PC2'])
 t.test(pat[pat$roi == 263,'SOFT_10_local_efficiency'],control[control$roi==263,'SOFT_10_local_efficiency'])
 var.test(pat[pat$roi == 263,'PC2'],control[control$roi==263,'PC2'])
 graph.density(dataset$SOFT_14_local_efficiency,dataset[dataset$PC2>=6,'SOFT_14_local_efficiency']) # outliers on PC2
@@ -153,6 +154,19 @@ for (i in 1:length(interesting_rows[,'all_rois'])){
 	readline()
 }
 dev.off()
+
+# test actual graph measures for each of the interesting rows to see which ones are contributing to statistical significance
+for (i in 1:length(interesting_rows[,'all_rois'])){
+	roi = interesting_rows[i,'all_rois']
+	for (j in 1: length(graph_measures)){
+		t1 = control[control$roi == roi,graph_measures[j]]
+		t2 = pat[pat$roi == roi,graph_measures[j]]
+		t = t.test(t1,t2)
+		if (t$p.value < alpha){
+			print(sprintf("p-val: %f roi: %d, graph measure %s",t$p.value,roi,graph_measures[j]))
+		}
+	}
+}
 
 outliers = which(dataset$PC2>= 6 | dataset$PC3>=6)
 subset_measures = grep('HARD_0.95|SOFT_12',graph_measures,value=TRUE)

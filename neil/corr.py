@@ -13,10 +13,19 @@ base_folder = '/Volumes/Serena/Raj/Preprocess_Rest'
 
 control_folder=base_folder
 control=['10637_20140304', '10638_20140507', '10711_20140826', '10717_20140813', '10767_20140814', '10772_20140527', '10811_20140721', '10814_20140623', '10822_20140619', '10873_20140918', '10891_20140728', '10997_20140308', '11162_20140717', '11178_20140310', '11216_20141029', '11228_20140922', '11229_20140521', '11243_20140130', '11250_20140228', '11252_20140213', '11253_20140308', '11255_20140227', '11256_20140314', '11258_20140306', '11262_20140331', '11263_20140307', '11265_20141006', '11274_20140603', '11275_20140527', '11278_20140519', '11279_20140423', '11280_20140905', '11281_20140416', '11282_20141111', '11287_20140528', '11288_20140602', '11298_20140702', '11302_20140919', '11304_20140812', '11305_20140805', '11310_20140731', '11311_20140819', '11313_20140918', '11314_20140916', '11315_20140822', '11316_20140818', '11317_20140829', '11318_20140828', '11319_20140904', '11321_20140925', '11322_20140904', '11323_20141126', '11324_20141023', '11325_20141007', '11326_20140922', '11328_20141113', '11329_20141014', '11331_20141024', '11335_20141111', '11336_20141204', '11337_20141117', '11338_20141213', '11342_20150228', '11343_20141213', '11344_20141209', '11345_20141211', '11346_20150131', '11347_20141205', '11353_20150124'] # all controls except '11277_20140410' because it was missing at last generation
+control_blacklist = ['10637_20140304','10711_20140826','11305_20140805'] # Too much motion artifact as noted by patient_generation.py
+
 population_folder = base_folder+'/SPECC'
-population= ['008JH_13JAN2014', '013jk_30Apr2014', '015cw_03May2014', '018LQ_26MAR2014', '019ec_04Aug2014', '020lr_03May2014', '023ds_07May2014', '025ay_10Jun2014', '027AD_18Sep2014', '031VN_09Sep2014', '037ll_25Aug2014', '038aa_03nov2014', '046ak_03Nov2014', '047ab_03nov2014', '048ah_18Dec2014', '049tm_17Apr2015', '050ai_06Nov2014', '0531lw_16Dec2014', '054ls_12Jan2015', '057as-09Dec2014', '058ab_15Jan2015', '059cr_08jan2015', '066dw_14Mar2015', '067sm_23Apr2015', '071eh_09Apr2015'] # removed first two (controls)
+population= ['008JH_13JAN2014', '013jk_30Apr2014', '015cw_03May2014', '018LQ_26MAR2014', '019ec_04Aug2014', '020lr_03May2014', '023ds_07May2014', '025ay_10Jun2014', '027AD_18Sep2014', '031VN_09Sep2014', '037ll_25Aug2014', '038aa_03nov2014', '046ak_03Nov2014', '047ab_03nov2014', '048ah_18Dec2014', '049tm_17Apr2015', '050ai_06Nov2014', '0531lw_16Dec2014', '054ls_12Jan2015', '057as-09Dec2014', '058ab_15Jan2015', '059cr_08jan2015', '066dw_14Mar2015', '067sm_23Apr2015', '071eh_09Apr2015'] # removed first two (controls); TODO: dynamically generate this (and control) list and add the first two items in folder to blacklist
+population_blacklist = ['023ds_07May2014','050ai_06Nov2014','0531lw_16Dec2014','028th_07Jul2014'] # First three: too much motion artifact as noted by patient_generation.py; 4th: rest data doesn't exist
 #filename = 'corr_roimean_pearson.txt' # robust vs pearson
 filename = 'corr_rois_pearson_new_r_v2.txt' # robust vs pearson
+
+def filter_list(orig,blacklist):
+    """
+    Returns the list with the blacklisted items deleted; ignores items not found in orig
+    """
+    return [i for i in orig if i not in blacklist]
 
 def draw_corr_matrix(arr,show=True):
     """
