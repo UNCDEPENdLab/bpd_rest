@@ -1,4 +1,6 @@
 #!/usr/local/bin/python
+# corr.py: Process and analyze correlation/adjacency matrices generated from resting state fMRI
+# @author: Neil Munjal
 import numpy as np
 import igraph as ig
 import matplotlib.pyplot as plt
@@ -19,7 +21,7 @@ population_folder = base_folder+'/SPECC'
 population= ['008JH_13JAN2014', '013jk_30Apr2014', '015cw_03May2014', '018LQ_26MAR2014', '019ec_04Aug2014', '020lr_03May2014', '023ds_07May2014', '025ay_10Jun2014', '027AD_18Sep2014', '031VN_09Sep2014', '037ll_25Aug2014', '038aa_03nov2014', '046ak_03Nov2014', '047ab_03nov2014', '048ah_18Dec2014', '049tm_17Apr2015', '050ai_06Nov2014', '0531lw_16Dec2014', '054ls_12Jan2015', '057as-09Dec2014', '058ab_15Jan2015', '059cr_08jan2015', '066dw_14Mar2015', '067sm_23Apr2015', '071eh_09Apr2015'] # removed first two (controls); TODO: dynamically generate this (and control) list and add the first two items in folder to blacklist
 population_blacklist = ['023ds_07May2014','050ai_06Nov2014','0531lw_16Dec2014','028th_07Jul2014'] # First three: too much motion artifact as noted by patient_generation.py; 4th: rest data doesn't exist
 #filename = 'corr_roimean_pearson.txt' # robust vs pearson
-filename = 'corr_rois_pearson_new_r_v2.txt' # robust vs pearson
+filename = 'corr_rois_pearson_new_r_v2.txt' # robust vs pearson; r = using r values, instead of z/t-scores as was previously done; v2 due to minor adjustments made to preprocessing script
 
 def filter_list(orig,blacklist):
     """
@@ -202,7 +204,7 @@ def map_adjacency_matrix(mat, map_type, threshold = -2, beta = -2, percentile = 
             HARD applies a hard threshold (above which an unweighted edge is placed)
             HARD_WEIGHTED applies threshold (above which a weighted edge has weight = r)
             SOFT applies continuous power function ((r+1)/2)^beta to map r from [-1,1] to [0,1]
-                beta of  1 degenerates to simple linear weighting (but mapping -1,1 to 0,)
+                beta of  1 degenerates to simple linear weighting (but mapping -1,1 to 0,1)
         threshold (required if using HARD or HARD_WEIGHTED)
         beta (required if using SOFT)
         percentile: if defined, will supercede threshold; range [0-1]. Will return
@@ -266,6 +268,8 @@ def network_measures(mat,weighted=False,limited=False,gamma=1.0):
         mat: n x n 2D adjacency matrix, preferably with 0's on diagonal. Range [0,1] (non-negative weights).
         weighted: Default False; modifies whichever calculations to indicate that the matrix has weighted vertices
         gamma (opt): passed to modularity/community structure methods, lower than 1 preferentially searches for larger modules
+        limited: only run/return a limited subset of measures to speed up operation, particularly as some of the excluded
+            measures may not be well-defined for our graphs
 
     Output:
         dictionary with the statistic names as keys, results/arrays as values
