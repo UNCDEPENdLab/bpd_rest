@@ -146,12 +146,12 @@ graph.density(dataset$SOFT_14_local_efficiency,dataset[dataset$PC2>=6,'SOFT_14_l
 graph.density(dataset$HARD_0.95_betweenness_binary,dataset[dataset$PC3>=6,'HARD_0.95_betweenness_binary']) # outliers on PC3
 
 for (i in 1:length(interesting_rows[,'all_rois'])){
+	readline()
 	par(mfrow=c(3,1))
 	roi = interesting_rows[i,'all_rois']
 	for (j in 1:length(components)){
 		graph.density(control[control$roi==roi,components[j]],pat[pat$roi==roi,components[j]],labelOne="control",labelTwo="patient",main=sprintf("%d: %s, p=%f",roi,components[j],interesting_rows[i,components[j]]))
 	}
-	readline()
 }
 dev.off()
 
