@@ -1,4 +1,4 @@
-setwd(file.path(getMainDir(), "bpd_rest"))
+#setwd(file.path('/Volumes/Serena/SPECC', "bpd_rest"))
 
 corrfiles=system("find /Volumes/Serena/Raj/Preprocess_Rest -iname corr_rois_pearson_new_r_v2.txt -type f", intern=TRUE)
 ids <- sub("/Volumes/Serena/Raj/Preprocess_Rest/(?:SPECC/)*([^/]+)/corr_rois_pearson_new_r_v2.txt$", "\\1", corrfiles, perl=TRUE)
