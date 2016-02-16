@@ -1,6 +1,6 @@
 #setwd(file.path('/Volumes/Serena/SPECC', "bpd_rest"))
 
-corrfiles=system("find /Volumes/Serena/Raj/Preprocess_Rest -iname corr_rois_pearson_new_r_v2.txt -type f", intern=TRUE)
+corrfiles=system("find /Volumes/Serena/Raj/Preprocess_Rest -iname corr_rois_pearson_new_r_v2.txt -not -path '*MM_Pp_Rest*'", intern=TRUE)
 ids <- sub("/Volumes/Serena/Raj/Preprocess_Rest/(?:SPECC/)*([^/]+)/corr_rois_pearson_new_r_v2.txt$", "\\1", corrfiles, perl=TRUE)
 bpd <- grep("\\d{3}[A-z]{2}_.*", ids, perl=TRUE)
 bpd <- bpd[!ids[bpd] %in% c("001RA_07DEC2013", "005AI_06NOV2013", "023ds_07May2014", "050ai_06Nov2014", "0531lw_16Dec2014")]
