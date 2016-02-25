@@ -33,6 +33,17 @@ mat,mask = corr.load_patients([population_folder+'/'+i+'/'+filename for i in pop
 everyone.append(mat)
 everyone_mask.append(mask)
 
+print 'Significant edges:'
+for i in range(0,len(everyone[0])):
+    for j in range(0,len(everyone[0][i])):
+        con = [np.arctanh(k) for k in everyone[0][i][j]]
+        pop = [np.arctanh(k) for k in everyone[1][i][j]]
+        s = stats.ttest_ind(con,pop)
+        if abs(s[0]) > 4.3:
+            print i,j,s[0],s[1]
+
+
+
 # mapping the adjacency matrices
 everyone_mapped = [] # WARNING: changes format from everyone; [n][i][x][y] where n is population as above, i is pt, x,y are adjacency matrix
 percentile,beta = -2,-2
@@ -44,7 +55,7 @@ weighted = False if map_technique == corr.HARD else True
 for i in range(0,len(everyone)): # pick group (control vs pop)
     pop = []
     for j in range(0,len(everyone[i][0,0,:])): # pick patient
-        pop.append(corr.map_adjacency_matrix(everyone[i][:,:,j],map_technique,percentile=percentile,beta=beta))
+        pop.append(corr.map_adjacency_matrix(everyone[i][:,:,j],map_technique,percentile=percentile,beta=beta,ignore_negative_weights=True))
     everyone_mapped.append(pop)
 
 # generate stats
@@ -91,6 +102,7 @@ print local_measures
 
 roi_index = range(0,len(everyone[0]))
 print len(roi_index)
+roi_index = [30, 190,212,228,230,234]
 
 for i in range(0,len(roi_index)):
     #roi = rois[i]

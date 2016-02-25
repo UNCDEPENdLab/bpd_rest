@@ -193,7 +193,7 @@ def create_graph(avg,percentile=0,weighted=True):
 HARD = 0
 HARD_WEIGHTED = 1
 SOFT = 3
-def map_adjacency_matrix(mat, map_type, threshold = -2, beta = -2, percentile = -2):
+def map_adjacency_matrix(mat, map_type, threshold = -2, beta = -2, percentile = -2, ignore_negative_weights = False):
     """
     Creates a mapped adjacency matrix.
 
@@ -211,6 +211,9 @@ def map_adjacency_matrix(mat, map_type, threshold = -2, beta = -2, percentile = 
             a hard/hard_weighted matrix with approximately ((1-percentile)*100)% of
             original edges; 1-percentile is tie-density. Can be used to generate a
             "equi-sparse" networks across patients, as opposed to "equi-threshold"
+        ignore_negative_weights (default: False): if True, will drop all
+            negative weights first, before percentile or threshold calculations are
+            done. Only applies to HARD thresholded matrices
 
     Output:
         adj: 2D n x n adjacency matrix; if HARD, it is binary, else it is float with range [0,1] (only guranteed if input data is [-1,1]
@@ -228,7 +231,8 @@ def map_adjacency_matrix(mat, map_type, threshold = -2, beta = -2, percentile = 
             corr_list = []
             for i in range(0,len(mat)):
                 for j in range(0,i):
-                    corr_list.append(mat[i][j])
+                    if mat[i][j] >=0 or ignore_negative_weights:
+                        corr_list.append(mat[i][j])
             cl = np.array(corr_list)
             cutoff_percentile = percentile * 100
             cutoff = np.percentile(cl,cutoff_percentile)
