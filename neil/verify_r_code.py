@@ -1,21 +1,28 @@
 import corr
-import mni
-from scipy import stats
-import numpy as np
 import bct
-import warnings
-import pylab
+import os
+import numpy as np
+from scipy import stats
 
 control_folder = corr.control_folder
-control = corr.filter_list(corr.control,corr.control_blacklist)
 population_folder = corr.population_folder
-population = corr.filter_list(corr.population,corr.population_blacklist)
+allsubj = open('../subject_list.txt','r')
+subjs = [i.strip() for i in allsubj.readlines()]
+allsubj.close()
 filename = 'corr_rois_pearson_new_r_v2.txt'
+blacklist = ["001RA_07DEC2013", "005AI_06NOV2013", "023ds_07May2014", "050ai_06Nov2014", "0531lw_16Dec2014"]
 
-debug_timing = True
-if debug_timing:
-    import time
-    currtime = time.clock()
+matched_controls_file = open('demographics/limited_controls.txt','r')
+matched_controls = [i.strip() for i in matched_controls_file.readlines()]
+matched_controls_file.close()
+
+all_controls = [os.path.basename(os.path.split(i)[0]) for i in subjs if i.find("SPECC")==-1]
+all_population = [os.path.basename(os.path.split(i)[0]) for i in subjs if i.find("SPECC")!=-1]
+
+#controls = [i for i in all_controls if i not in blacklist]
+control = matched_controls
+population = [i for i in all_population if i not in blacklist]
+
 names = [control,population]
 everyone = [] # [0] is control supermatrix, [1] is population; format: [n][x][y][i]
 everyone_mask = []
@@ -25,11 +32,17 @@ everyone_mask.append(mask)
 mat,mask = corr.load_patients([population_folder+'/'+i+'/'+filename for i in population])
 everyone.append(mat)
 everyone_mask.append(mask)
-if debug_timing:
-    newtime = time.clock()
-    delta = newtime - currtime
-    currtime = newtime
-    print "load matrices",delta
+
+print 'Significant edges:'
+for i in range(0,len(everyone[0])):
+    for j in range(0,len(everyone[0][i])):
+        con = [np.arctanh(k) for k in everyone[0][i][j]]
+        pop = [np.arctanh(k) for k in everyone[1][i][j]]
+        s = stats.ttest_ind(con,pop)
+        if abs(s[0]) > 4.3:
+            print i,j,s[0],s[1]
+
+
 
 # mapping the adjacency matrices
 everyone_mapped = [] # WARNING: changes format from everyone; [n][i][x][y] where n is population as above, i is pt, x,y are adjacency matrix
@@ -42,13 +55,8 @@ weighted = False if map_technique == corr.HARD else True
 for i in range(0,len(everyone)): # pick group (control vs pop)
     pop = []
     for j in range(0,len(everyone[i][0,0,:])): # pick patient
-        pop.append(corr.map_adjacency_matrix(everyone[i][:,:,j],map_technique,percentile=percentile,beta=beta))
+        pop.append(corr.map_adjacency_matrix(everyone[i][:,:,j],map_technique,percentile=percentile,beta=beta,ignore_negative_weights=True))
     everyone_mapped.append(pop)
-if debug_timing:
-    newtime = time.clock()
-    delta = newtime - currtime
-    currtime = newtime
-    print "map matrices",delta
 
 # generate stats
 everyone_stats = [] # [n][dict]
@@ -60,11 +68,6 @@ for i in range(0,len(everyone_mapped)):
 
     everyone_stats.append(pop_stats)
 
-if debug_timing:
-    newtime = time.clock()
-    delta = newtime - currtime
-    currtime = newtime
-    print "generate stats",delta
 global_measures = []
 local_measures = []
 
@@ -95,76 +98,20 @@ if map_technique==corr.SOFT:
 local_measures.sort()
 global_measures.sort()
 
-if debug_timing:
-    newtime = time.clock()
-    delta = newtime - currtime
-    currtime = newtime
-    print "calculate network measures",delta
+print local_measures
 
-# remainder of code assumes that everyone.* arrays have only 2 entries, control = 0, pop = 1
-# compare global measures
-print "{:30s} {:>10s}{:>10s}{:>10s}{:>10s}{:>10s}{:>10s}".format("key","mean_c","mean_p","std_c","std_p","t-score","p-value")
-for key in global_measures:
-    control = [i[key] for i in everyone_stats[0]]
-    population = [i[key] for i in everyone_stats[1]]
-    s = stats.ttest_ind(control,population)
-    print "{:30s} {:10.4f}{:10.4f}{:10.4f}{:10.4f}{:10.4f}{:10.4f}".format(key[:30], np.mean(control),np.mean(population),np.std(control),np.std(population),s[0],s[1])
-
-"""
-# compare local measures at specified ROIs
-rois = ["l_amygdala","r_amygdala","l_subgenual"]
-read='ROI_nodes_new_v2.node'
-roi_list = corr.get_ROI_list(read)
-roi_index = [mni.find_closest(mni.common_roi[i],roi_list)[0] for i in rois]
+roi_index = range(0,len(everyone[0]))
+print len(roi_index)
+roi_index = [30, 190,212,228,230,234]
 
 for i in range(0,len(roi_index)):
-    roi = rois[i]
+    #roi = rois[i]
     ind = roi_index[i]
     print ""
-    print "ROI: ",roi,", node",ind
+    print "node",ind
     print "{:30s} {:>10s}{:>10s}{:>10s}{:>10s}{:>10s}{:>10s}".format("key","mean_c","mean_p","std_c","std_p","t-score","p-value")
     for key in local_measures:
         control = [j[key][ind] for j in everyone_stats[0]]
         population = [j[key][ind] for j in everyone_stats[1]]
         s = stats.ttest_ind(control,population)
         print "{:30s} {:10.4f}{:10.4f}{:10.4f}{:10.4f}{:10.4f}{:10.4f}".format(key[:30], np.mean(control),np.mean(population),np.std(control),np.std(population),s[0],s[1])
-
-
-if debug_timing:
-    newtime = time.clock()
-    delta = newtime - currtime
-    currtime = newtime
-    print "calculate measures",delta
-"""
-
-"""
-# write out all local measures in 1 file per subject, 1 line per ROI
-all_measures = local_measures
-out_folder = '/Volumes/Serena/SPECC/Neil/bpd_rest/neil/stats_output_bin/'
-# create file for each subject, rows are ROIs, columns are statistical measures
-for i in range(0,len(everyone_stats)):
-    for j in range(0,len(everyone_stats[i])):
-        out_filename = names[i][j]
-        f = open(out_folder+out_filename,'w')
-        f.write("ROI,"+",".join(all_measures)+'\n')
-        for k in range(0,len(everyone_stats[i][j][all_measures[0]])):
-            f.write(str(k)+','+','.join([str(everyone_stats[i][j][measure][k]) for measure in all_measures])+'\n')
-        print out_filename
-        f.close()
-
-if debug_timing:
-    newtime = time.clock()
-    delta = newtime - currtime
-    currtime = newtime
-    print "write matrices to file",delta
-"""
-
-"""
-roi = 0
-measures = ["strength","local_efficiency","clustering_weighted","pagerank","betweenness_binary","eigenvector_centrality_und"]
-for i in range(0,len(measures)):
-    pylab.subplot(2,3,i+1)
-    pylab.title(measures[i])
-    pylab.hist([j[measures[i]][roi_index[roi]] for j in everyone_stats[0]],20)
-pylab.show()
-"""
