@@ -112,6 +112,8 @@ global_measures.sort()
 roi_index = range(0,len(everyone[0]))
 #roi_index = [30, 190,212,228,230,234]
 
+print ""
+print "Global measures:"
 for key in global_measures:
     con = [j[key] for j in everyone_stats[0]]
     pop = [j[key] for j in everyone_stats[1]]
