@@ -3,45 +3,54 @@ import bct
 import os
 import numpy as np
 from scipy import stats
+import sys
 
-control_folder = corr.control_folder
-population_folder = corr.population_folder
+#control_folder = corr.control_folder
+#control_folder_post = ''
+#population_folder = corr.population_folder
+#population_folder = '/Volumes/Serena/SPECC/MR_Proc_Rest/'
+#population_folder_post = 'mni_5mm_wavelet/rest1/'
 allsubj = open('../subject_list.txt','r')
 subjs = [i.strip() for i in allsubj.readlines()]
 allsubj.close()
 filename = 'corr_rois_pearson_new_r_v2.txt'
-blacklist = ["001RA_07DEC2013", "005AI_06NOV2013", "023ds_07May2014", "050ai_06Nov2014", "0531lw_16Dec2014"]
+#blacklist = ["001RA_07DEC2013", "005AI_06NOV2013", "023ds_07May2014", "050ai_06Nov2014", "0531lw_16Dec2014"] # replaced by blacklist.txt file
 
 matched_controls_file = open('demographics/limited_controls.txt','r')
 matched_controls = [i.strip() for i in matched_controls_file.readlines()]
 matched_controls_file.close()
 
-all_controls = [os.path.basename(os.path.split(i)[0]) for i in subjs if i.find("SPECC")==-1]
-all_population = [os.path.basename(os.path.split(i)[0]) for i in subjs if i.find("SPECC")!=-1]
+blacklist_file = open('../blacklist.txt','r')
+blacklist = [i.strip().split()[0] for i in blacklist_file.readlines()]
+blacklist_file.close()
 
-#controls = [i for i in all_controls if i not in blacklist]
-control = matched_controls
+roi_file = open('coordinate_generation/bb264coordinate_appended_culled_labels.txt','r')
+rois = [r.strip('"').split('\t') for r in roi_file.readlines()][1:]
+
+all_controls = [i for i in subjs if i.find("SPECC")==-1]
+all_population = [i for i in subjs if i.find("SPECC")!=-1]
+
+controls = [i for i in all_controls if i not in blacklist]
+#control = matched_controls
 population = [i for i in all_population if i not in blacklist]
 
-names = [control,population]
 everyone = [] # [0] is control supermatrix, [1] is population; format: [n][x][y][i]
 everyone_mask = []
-mat,mask = corr.load_patients([control_folder+'/'+i+'/'+filename for i in control])
+mat,mask = corr.load_patients(controls)
 everyone.append(mat)
 everyone_mask.append(mask)
-mat,mask = corr.load_patients([population_folder+'/'+i+'/'+filename for i in population])
+mat,mask = corr.load_patients(population)
 everyone.append(mat)
 everyone_mask.append(mask)
 
 print 'Significant edges:'
 for i in range(0,len(everyone[0])):
-    for j in range(0,len(everyone[0][i])):
+    for j in range(0,i):
         con = [np.arctanh(k) for k in everyone[0][i][j]]
         pop = [np.arctanh(k) for k in everyone[1][i][j]]
         s = stats.ttest_ind(con,pop)
         if abs(s[0]) > 4.3:
-            print i,j,s[0],s[1]
-
+            print i,j,s[0],s[1],rois[i][1],rois[j][1]
 
 
 # mapping the adjacency matrices
@@ -98,20 +107,28 @@ if map_technique==corr.SOFT:
 local_measures.sort()
 global_measures.sort()
 
-print local_measures
 
 roi_index = range(0,len(everyone[0]))
-print len(roi_index)
-roi_index = [30, 190,212,228,230,234]
+#roi_index = [30, 190,212,228,230,234]
 
-for i in range(0,len(roi_index)):
-    #roi = rois[i]
-    ind = roi_index[i]
-    print ""
-    print "node",ind
-    print "{:30s} {:>10s}{:>10s}{:>10s}{:>10s}{:>10s}{:>10s}".format("key","mean_c","mean_p","std_c","std_p","t-score","p-value")
+for key in global_measures:
+    con = [j[key] for j in everyone_stats[0]]
+    pop = [j[key] for j in everyone_stats[1]]
+    s = stats.ttest_ind(con,pop)
+    print "{:30s} {:10.4f}{:10.4f}{:10.4f}{:10.4f}{:10.4f}{:10.4f}".format(key[:30],np.mean(con),np.mean(pop),np.std(con),np.std(pop),s[0],s[1])
+
+for ind in roi_index:
+    printstr = ""
+    do_i_print = False
+    printstr+= "node "+str(ind)+" "+rois[ind][1]+'\n'
+    printstr+="{:30s} {:>10s}{:>10s}{:>10s}{:>10s}{:>10s}{:>10s}\n".format("key","mean_c","mean_p","std_c","std_p","t-score","p-value")
     for key in local_measures:
-        control = [j[key][ind] for j in everyone_stats[0]]
-        population = [j[key][ind] for j in everyone_stats[1]]
-        s = stats.ttest_ind(control,population)
-        print "{:30s} {:10.4f}{:10.4f}{:10.4f}{:10.4f}{:10.4f}{:10.4f}".format(key[:30], np.mean(control),np.mean(population),np.std(control),np.std(population),s[0],s[1])
+        con = [j[key][ind] for j in everyone_stats[0]]
+        pop = [j[key][ind] for j in everyone_stats[1]]
+        s = stats.ttest_ind(con,pop)
+        if s[1] < 0.002:
+            do_i_print = True
+            printstr+="{:30s} {:10.4f}{:10.4f}{:10.4f}{:10.4f}{:10.4f}{:10.4f}\n".format(key[:30], np.mean(con),np.mean(pop),np.std(con),np.std(pop),s[0],s[1])
+    if do_i_print:
+        print ""
+        print printstr
