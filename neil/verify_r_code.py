@@ -1,3 +1,4 @@
+#!/usr/local/bin/python
 import corr
 import bct
 import os
