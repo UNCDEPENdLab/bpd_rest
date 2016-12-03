@@ -1,0 +1,50 @@
+---
+title: "Resting State Functional Connectivity in Adolecents with BPD"
+author: "Hall, Munjal, & Hallquist"
+date: "12/2/2016"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Orienting Remarks/ Conceptual Intro
+
+Borderline Personality Disorder (BPD) is a serious mental disorder associated with high levels of subjective distress, negative affect, self harm, unstable interpersonal relationships, unstable self image, and rapidly changing emotions. BPD has been associated with a wide variety of negaitve outcomes including high levels of hospitalization, poor relationship quality, and disturbingly high levels of suicide usually beginning in adolescence. Thus, understanding how BPD develops in adolescence is quickly becoming a high priority in the field of developmental psychopathology and neuroscience. 
+
+Understanding the development of networks of neural activity offer a useful perspective in understanding potential developmental abnormalities  
+## Including Code
+
+You can include R code in the document as follows:
+
+```{r}
+##########RS Graph pipeline
+####read in dependencies, create list of adjacency matricies
+setwd("~/Box_Sync/RS_BPD_graph/example_files")
+
+source("calcGraph_NH.R")
+source("Graph_util.R")
+
+library(igraph)
+library(brainGraph)
+library(dplyr)
+library(gdata)
+
+#######read suggested communities from consensus 264 and prep for entry into calcGraph if desired
+consen.264 <- read.xls("Consensus264.xls", header = TRUE)
+consen.264 <- consen.264 %>% select(X, Suggested.System)
+consen.264 <- consen.264[-1,]
+consen.264$vname <- paste0("V", 1:nrow(consen.264))
+consen.264 <- consen.264[,-1]
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
