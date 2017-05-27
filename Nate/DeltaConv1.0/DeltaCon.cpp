@@ -1,0 +1,425 @@
+/*
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+*/
+
+#include<iostream>
+#include<cmath>
+#include<ctime>
+#include<fstream>
+#include<algorithm>
+#include<vector>
+#include<map>
+#include<sys/time.h>
+
+#define ARMA_64BIT_WORD
+#include<armadillo>
+
+//corresponds to the number the node count in the files starts with
+#define NODE_START 1
+
+//corresponds to the number of repetitions are run for 'fast' DeltaCon (defaulted to 1 for practicality)
+#define FAST_REPETITIONS 1
+
+using namespace std;
+using namespace arma;
+
+//maintaining node attribution information
+struct NodeAttrib
+{
+	int node_val;
+	double attrib_val;
+};
+
+//maintaining edge importance information
+struct EdgeChange
+{
+	int src;
+	int dest;
+	double importance_val;
+};
+	
+bool cmpNodeAttrib(NodeAttrib a, NodeAttrib b)
+{
+	return (a.attrib_val > b.attrib_val);
+} 
+
+struct cmpEdgeChange
+{
+	bool operator()(const EdgeChange& a, const EdgeChange& b) const
+	{
+		if((a.src == b.dest && a.dest == b.src) || (a.src == b.src && a.dest == b.dest)) return false;
+		if(a.importance_val == b.importance_val)
+		{
+			if(a.src == b.src)
+			{
+				return (a.dest < b.dest);
+			}
+			else if(a.dest == b.dest)
+			{
+				return (a.src < b.src);
+			}
+		}
+		return (a.importance_val > b.importance_val);
+	}
+};
+
+//computing naive DeltaCon influence matrix
+void inverseLBP(sp_mat& A, int nnodes, sp_mat& inv)
+{
+        int max_power = 7;
+        vector<long long unsigned int> Dedgevec;
+        vec Ddeg(nnodes);
+        for(int n=0;n<nnodes;n++)
+        {
+                 Dedgevec.push_back(n);
+                 Dedgevec.push_back(n);
+                 Ddeg(n) = as_scalar(sum(A.col(n)));
+        }
+        umat Dlocations(&Dedgevec[0], 2, Dedgevec.size()/2, false, false);
+        //create sparse diagonal matrices
+        sp_mat D(Dlocations, Ddeg, nnodes, nnodes);
+        //free vector containing degrees for diagonal after matrix is in memory
+        vector<long long unsigned int>().swap(Dedgevec);
+        double c1 = trace(D)+2;
+        double c2 = trace(D*D)-1;
+        double h_h = sqrt((-c1+sqrt(pow(c1,2.0)+4*c2))/(8*c2));
+        double ah = 4*pow(h_h,2.0)/(1-4*pow(h_h,2.0));
+        double ch = 2*h_h / (1-4*pow(h_h,2.0));
+        sp_mat M = (ch*A) - (ah*D);
+        sp_mat mat(M);
+	int cpower = 1;
+	while(max(max(mat)) > pow(10.0,-9.0) && cpower < max_power)
+	{
+		inv = inv + mat;
+		mat = mat * M;
+		cpower++;
+	}
+}
+
+//computing fast DeltaCon influence matrix
+void inverseLBPWithGroupSeed(sp_mat& A, int nnodes, sp_mat& priors, int groups, sp_mat& inv)
+{
+	int max_power = 10;
+	vector<long long unsigned int> Dedgevec;
+        vec Ddeg(nnodes);
+        for(int n=0;n<nnodes;n++)
+        {
+                 Dedgevec.push_back(n);
+                 Dedgevec.push_back(n);
+                 Ddeg(n) = as_scalar(sum(A.col(n)));
+        }
+        umat Dlocations(&Dedgevec[0], 2, Dedgevec.size()/2, false, false);
+        //create sparse diagonal matrices
+        sp_mat D(Dlocations, Ddeg, nnodes, nnodes);
+        //free vector containing degrees for diagonal after matrix is in memory
+	vector<long long unsigned int>().swap(Dedgevec);
+	double c1 = trace(D)+2;
+	double c2 = trace(D*D)-1;
+	double h_h = sqrt((-c1+sqrt(pow(c1,2.0)+4*c2))/(8*c2));
+	double ah = 4*pow(h_h,2.0)/(1-4*pow(h_h,2.0));
+	double ch = 2*h_h / (1-4*pow(h_h,2.0));
+	sp_mat M = (ch*A) - (ah*D);
+	for(int i=0;i<groups;i++)
+	{
+		vec invC(priors.col(i));
+		vec matC(priors.col(i));
+		int cpower = 1;
+		while(max(matC) > pow(10.0,-9.0) && cpower < max_power)
+		{
+			matC = M*matC;
+			invC = invC + matC;
+			cpower++;
+		}
+		inv.col(i) = invC;
+	}
+}
+
+//computing random partitionings for fast DeltaCon
+void randomPartition(sp_mat& priors, double frac)
+{
+	struct timeval tv;
+	gettimeofday(&tv,NULL);
+	srand(tv.tv_usec);
+	int groups = priors.n_cols;
+	int nnodes = priors.n_rows;
+	vec rvals = randu<vec>(nnodes);
+	for(int i=1;i<=groups;i++)
+	{
+		for(int t=0;t<nnodes;t++)
+		{
+			if(rvals(t) >= (i-1)*frac && rvals(t) < i*frac) priors(t,i-1) = 1;
+		}
+	}
+}
+
+//perform node attribution
+void nodeAttribution(sp_mat& A1, sp_mat& A2, sp_mat& dists, vector<NodeAttrib>& attrList, double propnodes, int normalize_node_attrib)
+{
+  double totaldist = sum(sum(dists));
+  double nodethreshold = propnodes*totaldist;
+  if (normalize_node_attrib == 1) {
+    nodethreshold=propnodes; //normalize attrib values below
+  }
+    
+  int nnodes = dists.n_rows;
+  struct NodeAttrib tempEntry;
+  for(int n=0;n<nnodes;n++) {
+    tempEntry.node_val = n+NODE_START;
+    if (normalize_node_attrib == 1) {
+      tempEntry.attrib_val = dists(n,0)/totaldist;
+    } else {
+      tempEntry.attrib_val = dists(n,0);
+    }
+    attrList.push_back(tempEntry);
+  }
+  sort(attrList.begin(), attrList.end(), cmpNodeAttrib);
+  double runningTotal = 0;
+  vector<NodeAttrib>::iterator it = attrList.begin();
+  while(runningTotal <= nodethreshold && it != attrList.end()) { // && sum(sum(A1.col(it->node_val - NODE_START) - A2.col(it->node_val - NODE_START)))!=0) {
+    runningTotal+=(it->attrib_val);  // /totaldist;
+    it++;
+  }
+  
+  attrList.erase(it-1, attrList.end());
+}
+
+void edgeAttribution(sp_mat& A1, sp_mat& A2, vector<NodeAttrib>& attrList, sp_mat& dists, map<EdgeChange, char, cmpEdgeChange>& imptEdges)
+{
+	int nnodes = A1.n_rows;
+	sp_mat R(nnodes, 1);	
+	struct EdgeChange tempEdgeChange;
+	char tempType;
+	for(int c=0;c<attrList.size();c++)
+	{
+		R.col(0) = A2.col(attrList[c].node_val - NODE_START) - A1.col(attrList[c].node_val - NODE_START);
+		sp_mat::iterator a = R.begin();
+		sp_mat::iterator b = R.end();
+		for(sp_mat::iterator it=a;it!=b;it++)
+		{
+			tempEdgeChange.src = attrList[c].node_val;
+			tempEdgeChange.dest = it.row() + NODE_START;
+			tempEdgeChange.importance_val = attrList[c].attrib_val + dists(it.row(),0);
+			if(*it == 1) tempType = '+';
+			else tempType = '-';
+			imptEdges.insert(pair<EdgeChange, char>(tempEdgeChange, tempType));
+		}
+	}
+}
+
+//input handling, metric computation
+int main(int argc, char* argv[])
+{
+	if(argc<5)
+	{
+		cerr << "Usage: ./deltacon filelist window-size naive|fast group-fraction <propnodes=0.8> <normalize-node-attrib=0>" << endl;
+		exit(0);
+	}
+
+	//setup default for proportion of nodes returned
+	double propnodes=0.8; //return nodal attributions that explain 80% of differences
+	if (argc >= 5) {
+	  propnodes=atof(argv[5]);
+	}
+
+	//setup default for node normalization
+	int normalize_node_attrib=0;
+	if (argc >= 6) {
+	  normalize_node_attrib=atoi(argv[6]);
+	}
+	
+	//prior beliefs constant
+	double p = 0.51;
+	
+	//read filelist
+	ifstream flist;
+	flist.open(argv[1]);
+	vector<string> filelist;
+	string tName;
+	while(flist >> tName)
+	{
+		filelist.push_back(tName);
+	}
+	flist.close();
+
+	//calculate # of loop iterations to cover entire file list
+	int numfiles = filelist.size();
+	int wsize = atoi(argv[2]);
+	int iterations = (numfiles/wsize)-1;
+	if(numfiles%wsize) iterations++;
+	if(!iterations)
+	{
+		cerr << "invalid wsize" << endl;
+		exit(0);
+	}
+	
+	//run through each pair of effective-graphs
+	for(int itr=0;itr<iterations;itr++)
+	{
+		int src, dest, weight;
+		int nnodes=0;
+		vector<long long unsigned int> A1edgevec, A2edgevec;
+		vector<double> A1weightvec, A2weightvec;
+		int nLines = 0;
+		ifstream graph;
+		int chunk1StartIndex = itr*wsize, chunk1EndIndex = (itr*wsize)+wsize;
+		int chunk2StartIndex = (itr*wsize)+wsize, chunk2EndIndex = min((itr*wsize)+wsize+wsize, numfiles);
+		//read graph information for first chunk of files
+		for(int c = chunk1StartIndex;c < chunk1EndIndex; c++)
+		{
+			graph.open(filelist.at(c).c_str());
+			while(graph >> src && graph >> dest && graph >> weight)
+			{
+				if(src > nnodes) nnodes = src+1-NODE_START;
+				if(dest > nnodes) nnodes = dest+1-NODE_START;
+				A1edgevec.push_back(src-NODE_START);
+				A1edgevec.push_back(dest-NODE_START);
+				A1weightvec.push_back(weight);
+		}
+			graph.close();
+		}
+		//read graph information for second chunk of files
+		for(int c = chunk2StartIndex;c < chunk2EndIndex; c++)
+                {
+                        graph.open(filelist.at(c).c_str());
+                        while(graph >> src && graph >> dest && graph >> weight)
+                        {
+				if(src > nnodes) nnodes = src+1-NODE_START;
+				if(dest > nnodes) nnodes = dest+1-NODE_START;
+                                A2edgevec.push_back(src-NODE_START);
+                                A2edgevec.push_back(dest-NODE_START);
+				A2weightvec.push_back(weight);
+                        }
+			graph.close();
+                }
+		
+		umat A1locations(&A1edgevec[0], 2, A1edgevec.size()/2, false, false);
+		umat A2locations(&A2edgevec[0], 2, A2edgevec.size()/2, false, false);
+		vec A1values(A1weightvec);
+		vec A2values(A2weightvec);
+		
+		//create sparse adjacency matrices
+		sp_mat A1(A1locations, A1values, nnodes, nnodes);
+		sp_mat A2(A2locations, A2values, nnodes, nnodes);
+		//free original vectors holding file contents after matrices are in memory
+		vector<long long unsigned int>().swap(A1edgevec);
+		vector<long long unsigned int>().swap(A2edgevec);
+		vector<double>().swap(A1weightvec);
+		vector<double>().swap(A2weightvec);
+		
+		//declare timer
+		wall_clock timer;
+		
+		//run DeltaCon fast (compute n x g influence matrix)
+		if(strcmp(argv[3],"fast")==0)
+		{
+			double frac = atof(argv[4]);
+			int groups = (int) ceil(1/frac);
+			vec t_all(FAST_REPETITIONS, fill::zeros);
+			vec sim(FAST_REPETITIONS, fill::zeros);
+			sp_mat inv1(nnodes, groups);
+			sp_mat inv2(nnodes, groups);
+			for(int j=0;j<FAST_REPETITIONS;j++)
+			{
+				sp_mat priors(nnodes, groups);
+				randomPartition(priors, frac);
+				timer.tic();
+				inverseLBPWithGroupSeed(A1, nnodes, priors, groups, inv1);
+				inverseLBPWithGroupSeed(A2, nnodes, priors, groups, inv2);
+				inv1 = (p-0.5) * inv1;
+				inv2 = (p-0.5) * inv2;
+				sim(j) = 1 / (1 + sqrt(sum(sum(square(sqrt(inv1)-sqrt(inv2))))));
+				t_all(j) = timer.toc();
+			}
+			vector<NodeAttrib> attrList(nnodes);
+
+			timer.tic();
+			sp_mat dists(sqrt(sum(square(sqrt(inv1)-sqrt(inv2)), 1)));
+			nodeAttribution(A1, A2, dists, attrList, propnodes, normalize_node_attrib);
+			double nodeAttribTime = timer.toc();
+			
+			for(int i=0;i<attrList.size();i++)
+			{
+				cout << attrList[i].node_val << " " << attrList[i].attrib_val << endl;
+			}	
+			
+			map<EdgeChange, char, cmpEdgeChange> imptEdges;
+			
+			timer.tic();
+			edgeAttribution(A1, A2, attrList, dists, imptEdges);
+			double edgeAttribTime = timer.toc();
+			
+			cout << endl;
+			map<EdgeChange, char>::iterator a = imptEdges.begin();
+                        map<EdgeChange, char>::iterator b = imptEdges.end();
+                        for(map<EdgeChange, char>::iterator it=a;it!=b;it++)
+                        {
+                                cout << (it->first).src << " " <<  (it->first).dest << " " << (it->second) << " " << (it->first).importance_val << endl;
+                        }
+			cout << endl;	
+			cout << "Similarity: " << mean(sim) << endl;
+			cout << "DeltaCon runtime: " << mean(t_all) << endl;		
+			cout << "Node Attribution runtime: " << nodeAttribTime << endl;
+			cout << "Edge Attribution runtime: " << edgeAttribTime << endl;
+		}
+		else if(strcmp(argv[3],"naive")==0)
+		{
+			double t=0, sim=0;
+			sp_mat inv1 = speye<sp_mat>(nnodes, nnodes);
+			sp_mat inv2 = speye<sp_mat>(nnodes, nnodes);
+			timer.tic();
+			inverseLBP(A1, nnodes, inv1);
+			inverseLBP(A2, nnodes, inv2);
+			inv1 = (p-0.5) * inv1;
+			inv2 = (p-0.5) * inv2;
+			sim = 1 / (1 + sqrt(sum(sum(square(sqrt(inv1)-sqrt(inv2))))));
+			t = timer.toc();
+			vector<NodeAttrib> attrList(nnodes);
+			
+			timer.tic();
+			sp_mat dists(sqrt(sum(square(sqrt(inv1)-sqrt(inv2)), 1)));
+			nodeAttribution(A1, A2, dists, attrList, propnodes, normalize_node_attrib);
+			double nodeAttribTime = timer.toc();
+			
+			for(int i=0;i<attrList.size();i++)
+                        {
+                                cout << attrList[i].node_val << " " << attrList[i].attrib_val << endl;
+                        }
+			
+			map<EdgeChange, char, cmpEdgeChange> imptEdges;
+			
+			timer.tic();
+			edgeAttribution(A1, A2, attrList, dists, imptEdges);
+			double edgeAttribTime = timer.toc();
+			
+			cout << endl;
+			map<EdgeChange, char>::iterator a = imptEdges.begin();
+			map<EdgeChange, char>::iterator b = imptEdges.end();
+			for(map<EdgeChange, char>::iterator it=a;it!=b;it++)
+			{
+				cout << (it->first).src << " " <<  (it->first).dest << " " << (it->second) << " " << (it->first).importance_val << endl;
+			}
+			cout << endl;
+			cout << "Similarity: " << sim << endl;
+			cout << "DeltaCon runtime: " << t << endl;
+			cout << "Node Attribution runtime: " << nodeAttribTime << endl;
+                        cout << "Edge Attribution runtime: " << edgeAttribTime << endl;
+
+		}
+		
+	}
+	
+	return 0;
+}
+
