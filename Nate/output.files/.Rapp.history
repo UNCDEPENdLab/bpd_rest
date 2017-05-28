@@ -1,0 +1,4 @@
+load("/Users/natehall/Box Sync/RS_BPD_graph/output.node/allmats_n89_20Dec2016.RData")
+a <- load("/Users/natehall/Box Sync/RS_BPD_graph/output.node/allmats_n89_20Dec2016.RData")
+a
+load("/Users/natehall/Box Sync/RS_BPD_graph/output.node/node.metrics.pearson.fd.rds")

@@ -27,7 +27,7 @@ roiMat <- read.table("~/Box Sync/RS_BPD_graph/bb264coordinate_appended_shift_nat
 atlas <- read.csv("power269_masterlookup_shift_nate.csv", header = TRUE)
 use.infomap <- 1
 infomap.density <- 10
-use.scotmi <- 1
+use.scotmi <- 0
 if(use.scotmi == 0){pipeline <- "pearson"} else{pipeline  <- "scotmi"}
 roi.dist <- 20
 ##metrics to run nodal comparisons on
@@ -54,21 +54,23 @@ if(file.exists(paste0(basedir, "/cachedRfiles/node.metrics.weighted.",pipeline,"
   node.metrics <- get(load(paste0(basedir, "/cachedRfiles/node.metrics.weighted.",pipeline,".RData")))
 }
 #compiled significant nodal comparisons
-if(file.exists(paste0(basedir, "/output.files/all.sig.nodal.",pipeline,".rds")) == TRUE) {
-  all.sig.nodal <- read.csv(paste0(basedir, "/output.files/all.sig.nodal.",pipeline,".csv"))
+if(file.exists(paste0(basedir, "/output.files/all.sig.nodal.weighted",pipeline,".rds")) == TRUE) {
+  all.sig.nodal <- read.csv(paste0(basedir, "/output.files/all.sig.nodal.weighted",pipeline,".csv"))
 }
-#total deltacon stats
-if(file.exists(paste0(basedir, "/output.files/deltacon_total_", pipeline, ".rds")) == TRUE) {
-  deltacon_total <- readRDS(paste0(basedir, "/output.files/deltacon_total_", pipeline, ".rds"))
-}
-#edge attribution deltacon values
-if(file.exists(paste0(basedir, "/output.files/edge_diffs_deltacon_", pipeline, ".rds")) == TRUE) {
-  edge_diffs_deltacon <- readRDS(paste0(basedir, "/output.files/edge_diffs_deltacon_", pipeline,".rds"))
-}
-#nodal attribution deltacon values
-if(file.exists(paste0(basedir, "/output.files/node_stats_deltacon_", pipeline, ".rds")) == TRUE) {
-  node_stats_deltacon <- readRDS(paste0(basedir, "/output.files/node_stats_deltacon_", pipeline, ".rds"))
-}
+
+
+# #total deltacon stats
+# if(file.exists(paste0(basedir, "/output.files/deltacon_total_", pipeline, ".rds")) == TRUE) {
+#   deltacon_total <- readRDS(paste0(basedir, "/output.files/deltacon_total_", pipeline, ".rds"))
+# }
+# #edge attribution deltacon values
+# if(file.exists(paste0(basedir, "/output.files/edge_diffs_deltacon_", pipeline, ".rds")) == TRUE) {
+#   edge_diffs_deltacon <- readRDS(paste0(basedir, "/output.files/edge_diffs_deltacon_", pipeline,".rds"))
+# }
+# #nodal attribution deltacon values
+# if(file.exists(paste0(basedir, "/output.files/node_stats_deltacon_", pipeline, ".rds")) == TRUE) {
+#   node_stats_deltacon <- readRDS(paste0(basedir, "/output.files/node_stats_deltacon_", pipeline, ".rds"))
+# }
 
 
 ################################################################################
@@ -106,31 +108,57 @@ for (i in 1:nrow(SPECC_rest)) {
 }
 
 ################################################################################
+####Framewise displacement
+#####filter subjects with over .20 brain volumes displaced .5mm or more
+
+##In progress (make sure ics is mounted): get motion info (notes on how to implement this in RS notes folder in OneNote)
+####this should include mean FD and max FD at the very least, standard script removes subjects with proportion of FD >.5mm of 20% or more 
+#####currently no safeguard against very large head movements
+
+## MH has now converted all SPECC MR directory names to all lower case to allow for match on case-sensitive filesystem
+## and to make the naming consistent
+# idfile <- "/gpfs/group/mnh5174/default/SPECC/SPECC_Participant_Info.csv"
+# ##idinfo <- gdata::read.xls(idfile)
+# idinfo <- read.csv(idfile)
+# library(dplyr)
+# options(dplyr.width=200)
+# idinfo <- idinfo %>% rowwise() %>% mutate(mr_dir=ifelse(LunaMRI==1,
+#                                                         paste0("/gpfs/group/mnh5174/default/MMClock/MR_Proc/", Luna_ID, "_", format((as.Date(ScanDate, format="%Y-%m-%d")), "%Y%m%d")), #convert to Date, then reformat YYYYMMDD
+#                                                         paste0("/gpfs/group/mnh5174/default/SPECC/MR_Proc/", tolower(SPECC_ID), "_", tolower(format((as.Date(ScanDate, format="%Y-%m-%d")), "%d%b%Y")))))
+# 
+# #verify that mr_dir is present as expected
+# idinfo$dirfound <- file.exists(idinfo$mr_dir)
+# subset(idinfo, dirfound==FALSE)
+# table(SPECC_rest[,c(3,5)])
+
+
+##standard FD script
+#SPECC_rest <- filter(SPECC_rest, pr_over5mm <= .15)
+SPECC_rest <- filter(SPECC_rest, pr_over5mm <= .2)
+table(SPECC_rest[,c(3,5)])
+
+#describe(SPECC_rest[,c(1:6, 8)])
+
+################################################################################
 ###setup Euclidean distance
 nrois <- nrow(roiMat)
 roiDist <- matrix(NA, nrow=nrois, ncol=nrois) 
 #equiv for loop approach (easier to read)
-system.time(for (i in 1:nrois) {
-  for (j in 1:nrois) {
-    roiDist[i,j] <- sqrt((roiMat[i,1] - roiMat[j,1])^2 + (roiMat[i,2]-roiMat[j,2])^2 + (roiMat[i,3] - roiMat[j,3])^2)
-  }
-})
+#system.time(for (i in 1:nrois) {
+for (j in 1:nrois) {
+  roiDist[i,j] <- sqrt((roiMat[i,1] - roiMat[j,1])^2 + (roiMat[i,2]-roiMat[j,2])^2 + (roiMat[i,3] - roiMat[j,3])^2)
+}
+#})
 
 ############################quick QA
 # hist(roiDist)
 # vecDist <- roiDist[lower.tri(roiDist)]
 # sum(vecDist < 20)/length(vecDist)
 
+#roi.dist can be changed at the front end of the script
 rmShort <- roiDist > roi.dist
+#creates binary matrix, in which 0 denotes a short distanced connection that is to be removed. 
 rmShort <- apply(rmShort, c(1,2), as.numeric)
-
-################################################################################
-#####filter subjects with over .15 brain volumes displaces .5mm or more
-table(SPECC_rest[,c(3,5)])
-SPECC_rest <- filter(SPECC_rest, pr_over5mm <= .15)
-table(SPECC_rest[,c(3,5)])
-
-describe(SPECC_rest[,c(1:6, 8)])
 
 ################################################################################
 ##preallocate empty array to read adjacency matrices into
@@ -150,7 +178,7 @@ if(use.scotmi ==0){
       #m <- m * rmShort
       allmats[f,,] <- m
     }}
-dim(allmats)
+
 ################################################################################
 #################create igraph object from adjacency matrix, include graph attr for mean strength of weighted edges and label nodes V1, V2,... 
 allg <- apply(allmats, 1, function(sub) {
@@ -164,6 +192,8 @@ allg <- apply(allmats, 1, function(sub) {
 save(allg, file = paste0(basedir,"/cachedRfiles/allg.weighted.", pipeline,".RData"))
 
 ################################################################################
+#####POINT OF DEPARTURE FROM BINARY PIPELINE: AT THIS POINT IN BINARY PIPELINE GRAPHS ARE DENSITY THRESHOLDED
+################################################################################
 ######overall strength differences
 #Assign BPD and Age attributes to be used for group differences tests
 attr(allg, "bpd") <- SPECC_rest[,"BPD"]
@@ -176,10 +206,9 @@ names(attributes(allg)$strength) <- NULL
 stren.df <- data.frame(group = factor(attr(allg, "bpd"), levels = c(0,1), labels = c("control", "bpd")), age = attr(allg, "age"), strength = attr(allg, "strength"))
 group.stren <- t.test(strength~group, stren.df, na.rm = TRUE) 
 age.stren <- lm(strength~age*group, stren.df, na.action = "na.exclude")
-summary(age.stren)
+summary(age.stren) ##non-sig p > .05
 
-####removing negative correlations in weighted matrices will give graphs with different number of edges
-# ##remove negative correlations between nodes
+##remove negative correlations between nodes, if this is run on pearson, the number of edges remaining will be different across subjs
 allg_noneg <- lapply(allg, function(g) {
   delete.edges(g, which(E(g)$weight < 0))
 })
@@ -217,12 +246,7 @@ save(allg_noneg, file = paste0(basedir,"/cachedRfiles/allg_noneg.weighted.infoma
 
 ################################################################################
 ##compute global metrics
-library(foreach)
-library(doSNOW)
 
-setDefaultClusterOptions(master="localhost") #move away from 10187 to avoid collisions
-clusterobj <- makeSOCKcluster(4)
-registerDoSNOW(clusterobj)
 if(!exists("allmetrics.global")) {
     allmetrics.global <- lapply(allg_noneg, function(subj) {
       calcGraph_weighted_global(subj)
@@ -233,12 +257,16 @@ if(!exists("allmetrics.global")) {
 
 ################################################################################
 ##compute nodal metrics
-# registerDoSEQ()
-# setDefaultClusterOptions(master="localhost") #move away from 10187 to avoid collisions
-# clusterobj <- makeSOCKcluster(4)
-# registerDoSNOW(clusterobj)
+#bombs out at foreach (line 273)
 
 if(!exists("allmetrics")) {
+  library(foreach)
+  library(doSNOW)
+  
+  setDefaultClusterOptions(master="localhost") #move away from 10187 to avoid collisions
+  clusterobj <- makeSOCKcluster(4)
+  registerDoSNOW(clusterobj)
+  
   allg_noneg <- lapply(1:length(allg_noneg), function(i) { allg_noneg[[i]]$pos <- i; return(allg_noneg[[i]]) } )
   #allg_noneg <- allg_noneg[-54]
   #allmetrics.nodal.weighted <- lapply(allg_noneg, function(subj) {
@@ -252,7 +280,7 @@ if(!exists("allmetrics")) {
   } 
 
 ################################################################################
-#WORKBENCH
+#IN PROGRESS
 deg_0 <- array(NA, c(length(allmetrics.nodal.weighted), length(densities_desired), nnodes )) #3-D FALSE that's subjects x densities x nodes. 
 for(s in 1:length(allmetrics)) {
   for(d in 1:length(densities_desired)){
