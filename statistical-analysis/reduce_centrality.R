@@ -53,4 +53,5 @@ sum(pr$sdev)
 cumvariance <- (cumsum((pr$sdev)^2) / sum(pr$sdev^2))
 pr$rotation #varimax or promax rotation if you need to interpret this
 
+
 first2 <- pr$x[,1:2]
