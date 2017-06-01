@@ -57,3 +57,7 @@ docs/_build/
 target/
 
 .DS_Store
+Nate/cachedRfiles
+Nate/adjmats_269_pearson
+Nate/adjmats_269_scotmi
+Nate/.Rapp.history
