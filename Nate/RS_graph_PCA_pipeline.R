@@ -1,48 +1,45 @@
 ##########RS_BPD_pipeline
 ####read in package dependencies and custom functions
-setwd("~/Box Sync/RS_BPD_graph")
+#setwd("~/Box Sync/RS_BPD_graph")
+setwd("/Users/michael/Data_Analysis/bpd_rest/Nate")
 basedir <- getwd()
 
-source("calcGraph_binary.R")
-source("Graph_util_redux.R")
-source("run_parse_deltacon.R")
-source("wibw_module_degree.R")
-library(igraph)
-library(RGtk2)
-library(brainGraph)
-library(ggplot2)
-library(dplyr)
-library(gdata)
-library(beepr)
-library(parallel)
-library(data.table)
-library(psych)
-library(tidyr)
+source("functions/setup_globals.R") #this will setup details of the parcellation, pipeline, and connection distance
+source("functions/calcGraph_binary.R")
+source("functions/import_adj_mats.R")
+source("functions/get_subj_info.R")
+source("functions/graph_util_redux.R")
+source("functions/run_parse_deltacon.R")
+source("functions/wibw_module_degree.R")
+
+#get_subj info here
+subj_info <- get_subj_info(adjmats_base, parcellation, pipeline, file_extension=".txt.gz")
+
+#import raw adjacency matrices here (subj_info already contains the identified raw files)
+allmats <- import_adj_mats(subj_info, rmShort = rmShort, allowCache=TRUE)
+
+#obtain weighted, non-negative weighted, and density-thresholded binary graphs
+gobjs <- setup_graphs(allmats, allowCache=TRUE)
+
+#gobjs contains a list of weighted, non-negative weighted, and binary matrices
+#pull these out into single variables for simplicity
+allg <- gobjs$allg
+allg_noneg <- gobjs$allg_noneg
+allg_density <- gobjs$allg_density
+
+rm(gobjs) #remove from environment to save memory
+
+#compute global metrics on density-thresholded graphs
+globalmetrics_dthresh <- compute_global_metrics(allg_density, allowCache=TRUE)
+
+###STOPPED HERE: IN PROGRESS
 
 
-#################################################################################
-##Specifications to set up pipeline
-nnodes <- 269  #varying this will require you to change the .txt coordinate file you read in for roiMat (should be 4 X nnodes txt file labelled:"x", "y", "z", "roi") and the masterlookup atlas
-roiMat <- read.table("~/Box Sync/RS_BPD_graph/bb264coordinate_appended_shift_nate_culled.txt", header=FALSE, col.names=c("x", "y", "z", "roi"))
-atlas <- read.csv("power269_masterlookup_shift_nate.csv", header = TRUE)
-use.infomap <- 1
-use.scotmi <- 0
-if(use.scotmi == 0){pipeline <- "pearson"} else{pipeline  <- "scotmi"}
-roi.dist <- 20
-metricstorun.nodal <- c("eigen.cent","degree", "closeness", "betweenness.node", "page.rank",  "part.coeff", "within.module.deg.zscore", "local.clustering", "gateway.coeff.btw", "gateway.coeff.degree", "between.module.deg.zscore")
-metricstorun.global <- c("characteristic_path_length", "clustering_coefficient", "small_worldness", "modularity")
 
 
 ################################################################################
 #######read in already processed Rdata files for faster run throughs:
-#all graphs at 1-20% density thresholds
-if(file.exists(paste0(basedir, "/cachedRfiles/allg_density.", pipeline, ".RData")) == TRUE) {
-  allg_density <- get(load(file = paste0(basedir, "/cachedRfiles/allg_density.", pipeline, ".RData")))
-}
-#computed global metrics
-if(file.exists(paste0(basedir, "/cachedRfiles/allmetrics.global.binary.", pipeline, ".RData")) == TRUE) {
-  allmetrics.global <- get(load(file = paste0(basedir, "/cachedRfiles/allmetrics.global.binary.", pipeline, ".RData")))
-} 
+
 #computed nodal metrics
 if(file.exists(paste0(basedir, "/cachedRfiles/allmetrics.binary.", pipeline, ".RData")) == TRUE) {
   allmetrics  <- get(load(paste0(basedir, "/cachedRfiles/allmetrics.binary.", pipeline, ".RData")))
@@ -75,124 +72,6 @@ if(file.exists(paste0(basedir, "/output.files/node_stats_deltacon_", pipeline, "
 
 
 
-################################################################################
-#################read in demographic info and combine with proper files in correct directory
-SPECC_rest <- read.csv("SPECC_info_trimmed.csv", header = TRUE)
-SPECC_rest$SPECC_ID <- as.character(SPECC_rest$SPECC_ID)
-adjbase <- file.path(paste0(basedir,"/adjmats_269_", pipeline, "/"))
-SPECC_rest$file <- NA_character_
-
-for (i in 1:nrow(SPECC_rest)) {
-  fname <- NULL
-  if(use.scotmi == 0){
-    #use regex for pearson fisherz
-    if (SPECC_rest[i,"LunaMRI"] == 1) {
-      #look for file under Luna ID
-      fname <- list.files(path=adjbase, pattern=paste0(SPECC_rest[i, "Luna_ID"], "_20\\d{6}_adjmat",nnodes,"_pearson_fisherz.txt.gz"), ignore.case = TRUE, full.names=TRUE)
-    } else {
-      #look for file under SPECC ID
-      fname <- list.files(path=adjbase, pattern=paste0(SPECC_rest[i, "SPECC_ID"], "_\\d{2}\\w{3}20\\d{2}_adjmat",nnodes,"_pearson_fisherz.txt.gz"), ignore.case = TRUE, full.names=TRUE)
-    }} else{
-      #use regex for scotmi
-      if (SPECC_rest[i,"LunaMRI"] == 1) {
-        #look for file under Luna ID
-        fname <- list.files(path=adjbase, pattern=paste0(SPECC_rest[i, "Luna_ID"], "_20\\d{6}_S-raw.txt"), ignore.case = TRUE, full.names=TRUE)
-      } else {
-        #look for file under SPECC ID
-        fname <- list.files(path=adjbase, pattern=paste0(SPECC_rest[i, "SPECC_ID"], "_\\d{2}\\w{3}20\\d{2}_S-raw.txt"), ignore.case = TRUE, full.names=TRUE)
-      }}
-  if (length(fname) != 1) {
-    print(SPECC_rest[i,])
-    stop("Cannot locate a file (or located more than 1) for the above record")
-  } else {
-    SPECC_rest[i,"file"] <- fname
-  }
-}
-
-################################################################################
-####Framewise displacement
-#####filter subjects with over .20 brain volumes displaced .5mm or more
-
-##In progress (make sure ics is mounted): get motion info (notes on how to implement this in RS notes folder in OneNote)
-####this should include mean FD and max FD at the very least, standard script removes subjects with proportion of FD >.5mm of 20% or more 
-#####currently no safeguard against very large head movements
-
-## MH has now converted all SPECC MR directory names to all lower case to allow for match on case-sensitive filesystem
-## and to make the naming consistent
-# idfile <- "/gpfs/group/mnh5174/default/SPECC/SPECC_Participant_Info.csv"
-# ##idinfo <- gdata::read.xls(idfile)
-# idinfo <- read.csv(idfile)
-# library(dplyr)
-# options(dplyr.width=200)
-# idinfo <- idinfo %>% rowwise() %>% mutate(mr_dir=ifelse(LunaMRI==1,
-#                                                         paste0("/gpfs/group/mnh5174/default/MMClock/MR_Proc/", Luna_ID, "_", format((as.Date(ScanDate, format="%Y-%m-%d")), "%Y%m%d")), #convert to Date, then reformat YYYYMMDD
-#                                                         paste0("/gpfs/group/mnh5174/default/SPECC/MR_Proc/", tolower(SPECC_ID), "_", tolower(format((as.Date(ScanDate, format="%Y-%m-%d")), "%d%b%Y")))))
-# 
-# #verify that mr_dir is present as expected
-# idinfo$dirfound <- file.exists(idinfo$mr_dir)
-# subset(idinfo, dirfound==FALSE)
-# table(SPECC_rest[,c(3,5)])
-
-
-##standard FD script
-SPECC_rest <- filter(SPECC_rest, pr_over5mm <= .15)
-# SPECC_rest <- filter(SPECC_rest, pr_over5mm <= .2)
-table(SPECC_rest[,c(3,5)])
-
-describe(SPECC_rest[,c(1:6, 8)])
-
-################################################################################
-###setup Euclidean distance
-nrois <- nrow(roiMat)
-roiDist <- matrix(NA, nrow=nrois, ncol=nrois) 
-
-#system.time(for (i in 1:nrois) {
-for (j in 1:nrois) {
-  roiDist[i,j] <- sqrt((roiMat[i,1] - roiMat[j,1])^2 + (roiMat[i,2]-roiMat[j,2])^2 + (roiMat[i,3] - roiMat[j,3])^2)
-}
-#})
-
-############################quick QA
-# hist(roiDist)
-# vecDist <- roiDist[lower.tri(roiDist)]
-# sum(vecDist < 20)/length(vecDist)
-
-#roi.dist can be changed at the front end of the script
-rmShort <- roiDist > roi.dist
-#creates binary matrix, in which 0 denotes a short distanced connection that is to be removed. 
-rmShort <- apply(rmShort, c(1,2), as.numeric)
-
-################################################################################
-##preallocate empty array to read adjacency matrices into
-allmats <- array(NA, c(length(SPECC_rest[,1]), nnodes, nnodes), dimnames=list(id = SPECC_rest$SPECC_ID, roi1=paste0("V", 1:nnodes), roi2=paste0("V", 1:nnodes)))
-
-#Read in raw adjacency files and convert to matrix to be read as igraph obj and remove short distanced connections by multiplying by binary rmShort matrix
-if(use.scotmi ==0){
-  for (f in 1:length(SPECC_rest[,1])) {
-    m <- as.matrix(read.table(as.character(SPECC_rest[f,7])))
-    m <- m * rmShort
-    allmats[f,,] <- m
-  }} else {
-    for (f in 1:length(SPECC_rest[,1])) {
-      m <- as.matrix(read.csv(as.character(SPECC_rest[f,7])))
-      m <- rbind(array(NaN, ncol(m)), m)
-      m[upper.tri(m)] <- t(m)[upper.tri(m)]
-      m <- m * rmShort
-      allmats[f,,] <- m
-    }}
-
-################################################################################
-#################create igraph object from adjacency matrix and label nodes V1, V2,...
-allg <- apply(allmats, 1, function(sub) {
-  g <- graph.adjacency(sub, mode="undirected", weighted=TRUE, diag=FALSE)
-  V(g)$name <- paste0("V", 1:nrow(sub))
-  g
-})
-
-##remove negative correlations between nodes, if this is run on pearson, the number of edges remaining will be different across subjs 
-allg_noneg <- lapply(allg, function(g) {
-  delete.edges(g, which(E(g)$weight < 0))
-})
 
 #check num of edges across subjs
 # for (subj in 1:length(allg)){
@@ -200,40 +79,6 @@ allg_noneg <- lapply(allg, function(g) {
 # }
 
 
-################################################################################
-#DENSITY THRESHOLDING: binarize and threshold graphs at densities ranging from 1-20%
-densities_desired <- seq(.01, .2, .01) 
-
-library(foreach)
-library(doSNOW)
-
-if(!exists("allg_density")){
-  setDefaultClusterOptions(master="localhost") #move away from 10187 to avoid collisions
-  clusterobj <- makeSOCKcluster(4)
-  registerDoSNOW(clusterobj)
-  
-  allg_density <- foreach(g=allg_noneg, .packages=c("igraph", "tidyr")) %dopar% {
-    nnodes <- length(V(g))
-    maxedges <- (nnodes*(nnodes-1))/2
-    
-    #much less clunky version than the density thresholding below
-    dgraphs <- lapply(densities_desired, function(d) {
-      #Obtains desired density given graph diameter
-      weights <- sort(E(g)$weight, decreasing=TRUE)
-      threshold <- weights[length(V(g))*(length(V(g))-1)/2 * d]
-      gthresh <- delete.edges(g, which(E(g)$weight < threshold))
-      gthresh <- remove.edge.attribute(gthresh, "weight")
-      return(gthresh)
-    })
-    
-    
-    names(dgraphs) <- paste0("d", densities_desired)
-    return(dgraphs)
-  }
-  save(allg_density, file = paste0(basedir,"/cachedRfiles/allg_density.", pipeline,".RData"))
-}
-
-#each element of allg_density is a list of 20 binary graphs for that subject at 1-20% density
 
 ################################################################################
 ######COMMUNITY STRUCTURE
@@ -298,19 +143,6 @@ colnames(mean.g.info.df) <- NULL
 #V(allg_density[[1]][[20]])$community
 
 ################################################################################
-##compute global metrics 
-if(!exists("allmetrics.global")) {
-  allmetrics.global <- foreach(subj=allg_density, .packages = c("igraph", "brainGraph")) %dopar% {
-    #for (subj in allg_density) { #put here for more fine-grained debugging
-    #require(igraph)
-    dl <- lapply(subj, function(dgraph) {
-      calcGraph_binary_global(dgraph)
-    })
-    names(dl) <- paste0("d", densities_desired)
-    dl
-  }
-  save(allmetrics.global, file = paste0(basedir,"/cachedRfiles/allmetrics.global.binary.", pipeline,".RData"))
-} 
 
 ################################################################################
 ###compute nodal metrics 
