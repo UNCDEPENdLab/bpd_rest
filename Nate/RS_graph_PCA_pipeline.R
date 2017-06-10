@@ -1,4 +1,4 @@
-##########RS_BPD_pipeline
+##########RS_BPD_pipeline PCA 
 ####read in package dependencies and custom functions
 setwd("~/Box Sync/RS_BPD_graph")
 basedir <- getwd()
@@ -19,6 +19,7 @@ library(data.table)
 library(psych)
 library(tidyr)
 
+##WARNING: currently reading FD info requires ics to be mounted on your computer, make sure either ics is mounted or move FD files to another folder
 
 #################################################################################
 ##Specifications to set up pipeline
@@ -31,7 +32,11 @@ if(use.scotmi == 0){pipeline <- "pearson"} else{pipeline  <- "scotmi"}
 roi.dist <- 20
 metricstorun.nodal <- c("eigen.cent","degree", "closeness", "betweenness.node", "page.rank",  "part.coeff", "within.module.deg.zscore", "local.clustering", "gateway.coeff.btw", "gateway.coeff.degree", "between.module.deg.zscore")
 metricstorun.global <- c("characteristic_path_length", "clustering_coefficient", "small_worldness", "modularity")
-
+#FD motion specs
+ics_dir <- "/mnt/ics"
+thresh <- 0.5
+spikes.exclude <- 0.2
+max.exclude <- 10
 
 ################################################################################
 #######read in already processed Rdata files for faster run throughs:
@@ -73,11 +78,10 @@ if(file.exists(paste0(basedir, "/output.files/node_stats_deltacon_", pipeline, "
   node_stats_deltacon <- readRDS(paste0(basedir, "/output.files/node_stats_deltacon_", pipeline, ".rds"))
 }
 
-
-
 ################################################################################
 #################read in demographic info and combine with proper files in correct directory
 SPECC_rest <- read.csv("SPECC_info_trimmed.csv", header = TRUE)
+
 SPECC_rest$SPECC_ID <- as.character(SPECC_rest$SPECC_ID)
 adjbase <- file.path(paste0(basedir,"/adjmats_269_", pipeline, "/"))
 SPECC_rest$file <- NA_character_
@@ -109,37 +113,30 @@ for (i in 1:nrow(SPECC_rest)) {
   }
 }
 
+SPECC_rest <- SPECC_rest[order(SPECC_rest$SPECC_ID),] 
+
 ################################################################################
-####Framewise displacement
-#####filter subjects with over .20 brain volumes displaced .5mm or more
+####Framewise displacement scrubbing
+#####filter subjects with high prop FD over given threshold and with large maximum movements
+FDInfo <- MotionInfoSPECC(ics_dir, thresh, spikes.exclude, max.exclude)
+####6/8/17 come back to 083 and 136.
+FDInfo$fd.info <- FDInfo$fd.info[-which(FDInfo$fd.info == "083DB"),]
+FDInfo$fd.info <- FDInfo$fd.info[-which(FDInfo$fd.info == "142MW"),]
+FDInfo <- FDInfo$fd.info 
+FDInfo$Subj <- as.character(FDInfo$Subj)
 
-##In progress (make sure ics is mounted): get motion info (notes on how to implement this in RS notes folder in OneNote)
-####this should include mean FD and max FD at the very least, standard script removes subjects with proportion of FD >.5mm of 20% or more 
-#####currently no safeguard against very large head movements
+if (all(FDInfo$Subj==SPECC_rest$SPECC_ID)) {cat("FDInfo and SPECC_rest have matching subjects")} else {cat("FDInfo and SPECC_rest do not have matching subjects")}
 
-## MH has now converted all SPECC MR directory names to all lower case to allow for match on case-sensitive filesystem
-## and to make the naming consistent
-# idfile <- "/gpfs/group/mnh5174/default/SPECC/SPECC_Participant_Info.csv"
-# ##idinfo <- gdata::read.xls(idfile)
-# idinfo <- read.csv(idfile)
-# library(dplyr)
-# options(dplyr.width=200)
-# idinfo <- idinfo %>% rowwise() %>% mutate(mr_dir=ifelse(LunaMRI==1,
-#                                                         paste0("/gpfs/group/mnh5174/default/MMClock/MR_Proc/", Luna_ID, "_", format((as.Date(ScanDate, format="%Y-%m-%d")), "%Y%m%d")), #convert to Date, then reformat YYYYMMDD
-#                                                         paste0("/gpfs/group/mnh5174/default/SPECC/MR_Proc/", tolower(SPECC_ID), "_", tolower(format((as.Date(ScanDate, format="%Y-%m-%d")), "%d%b%Y")))))
-# 
-# #verify that mr_dir is present as expected
-# idinfo$dirfound <- file.exists(idinfo$mr_dir)
-# subset(idinfo, dirfound==FALSE)
-# table(SPECC_rest[,c(3,5)])
-
-
-##standard FD script
-SPECC_rest <- filter(SPECC_rest, pr_over5mm <= .15)
-# SPECC_rest <- filter(SPECC_rest, pr_over5mm <= .2)
+SPECC_rest$FD.exclude <- as.numeric(FDInfo$maxExclude | FDInfo$thresh.exclude)
+#final FD cuts, table, and dexcriptives
+SPECC_rest <- SPECC_rest[which(SPECC_rest$FD.exclude == 0),]
 table(SPECC_rest[,c(3,5)])
-
 describe(SPECC_rest[,c(1:6, 8)])
+
+
+if(file.exists(paste0(basedir, "/SPECC_rest.csv")) == FALSE) {
+  write.csv(SPECC_rest, file = "SPECC_rest.csv")
+}
 
 ################################################################################
 ###setup Euclidean distance
@@ -147,10 +144,11 @@ nrois <- nrow(roiMat)
 roiDist <- matrix(NA, nrow=nrois, ncol=nrois) 
 
 #system.time(for (i in 1:nrois) {
-for (j in 1:nrois) {
-  roiDist[i,j] <- sqrt((roiMat[i,1] - roiMat[j,1])^2 + (roiMat[i,2]-roiMat[j,2])^2 + (roiMat[i,3] - roiMat[j,3])^2)
-}
-#})
+for (i in 1:nrois) {
+  for (j in 1:nrois) {
+    roiDist[i,j] <- sqrt((roiMat[i,1] - roiMat[j,1])^2 + (roiMat[i,2]-roiMat[j,2])^2 + (roiMat[i,3] - roiMat[j,3])^2)
+  }
+}#)
 
 ############################quick QA
 # hist(roiDist)
@@ -168,17 +166,17 @@ allmats <- array(NA, c(length(SPECC_rest[,1]), nnodes, nnodes), dimnames=list(id
 
 #Read in raw adjacency files and convert to matrix to be read as igraph obj and remove short distanced connections by multiplying by binary rmShort matrix
 if(use.scotmi ==0){
-  for (f in 1:length(SPECC_rest[,1])) {
-    m <- as.matrix(read.table(as.character(SPECC_rest[f,7])))
+  for (subj in 1:length(SPECC_rest[,1])) {
+    m <- as.matrix(read.table(as.character(SPECC_rest[subj,7])))
     m <- m * rmShort
-    allmats[f,,] <- m
+    allmats[subj,,] <- m
   }} else {
-    for (f in 1:length(SPECC_rest[,1])) {
-      m <- as.matrix(read.csv(as.character(SPECC_rest[f,7])))
+    for (subj in 1:length(SPECC_rest[,1])) {
+      m <- as.matrix(read.csv(as.character(SPECC_rest[subj,7])))
       m <- rbind(array(NaN, ncol(m)), m)
       m[upper.tri(m)] <- t(m)[upper.tri(m)]
       m <- m * rmShort
-      allmats[f,,] <- m
+      allmats[subj,,] <- m
     }}
 
 ################################################################################
@@ -195,10 +193,11 @@ allg_noneg <- lapply(allg, function(g) {
 })
 
 #check num of edges across subjs
-# for (subj in 1:length(allg)){
-#   print(length(E(allg_noneg[[subj]])))
-# }
+for (subj in 1:length(allg)){
+  print(length(E(allg_noneg[[subj]])))
+}
 
+str(allg$`001RA`)
 
 ################################################################################
 #DENSITY THRESHOLDING: binarize and threshold graphs at densities ranging from 1-20%
@@ -266,7 +265,7 @@ if (use.infomap == 1){
   })
 }
 
-mean.g.infomap
+
 
 ##########condense bad communities into the last community: community-dependent results from the last module should not be interpreted
 #V(mean.g.community[[10]])$community ##use this if using louvain
@@ -291,7 +290,6 @@ allg_density <- lapply(allg_density, function(subj) {
 
 mean.g.info.df <- data.frame(mean.g.infomap[[10]]$membership)
 colnames(mean.g.info.df) <- NULL
-
 #if(!file.exists(paste0(basedir,"/cachedRfiles/allg_density_infomap10.RData"))){save(allg_density, file = paste0(basedir,"/cachedRfiles/allg_density_infomap10.RData"))}
 
 #example: what is community assignment for subject [[1]] at density [[20]]..will be the same across densities
@@ -408,6 +406,7 @@ merge.bpdage <- SPECC_rest[,c("SPECC_ID", "BPD", "AgeAtScan")]
 colnames(merge.bpdage) <- c("subj", "BPD", "Age")
 
 toanalyze <- dplyr::left_join(toanalyze, merge.bpdage, by = "subj")
+write.csv(toanalyze, file = paste0(basedir, "/output.files/nodal.pca.toanalyze.",pipeline,".csv"))
 
 ##################################################################################################
 ##############
@@ -415,18 +414,25 @@ toanalyze <- dplyr::left_join(toanalyze, merge.bpdage, by = "subj")
 abst <- 2.64 ##about p < .005
 
 metrics.toanalyze <- names(select(toanalyze, -subj, -node, -BPD, -Age))
+nodes <- unique(select(toanalyze, -central, -between.node, -within.mod, -between.mod, -subj, -BPD, -Age))
+nodes <- as.numeric(nodes[,1])
+atlas <- read.csv("power269_masterlookup_shift_nate.csv", header = TRUE)
+# length(nodes)
+# max(nodes)
+#OR: nodes <- 1:269
 sigres <- 1
 results <- list()
 
 for (m in metrics.toanalyze) {
     for (n in nodes) {
+      # browser()
       thismetric <- toanalyze[toanalyze$node ==n, c(m, "BPD", "Age")]
       thismetric$BPD <- factor(thismetric$BPD, levels = c(0,1), labels = c("control", "BPD"))
       colnames(thismetric) <- c("metric", "group", "age")
       
       node.test <- tryCatch(t.test(metric~group, thismetric, na.rm = TRUE), error = function(errorname) { print(errorname); return(NULL) })
       if (is.null(node.test)) { message("Error occurred for metric: ", m, " and node: ", n) }
-      
+
       age.test <- tryCatch(lm(metric~age*group, thismetric, na.action = "na.exclude"), error=function(e) { print(e); return(NULL) })
       if (is.null(age.test)) { pvec <- NULL
       } else { pvec <- broom::tidy(age.test)$p.value[-1] } #p-values of age, bpd, and age x bpd. -1 to drop off intercept
@@ -434,16 +440,14 @@ for (m in metrics.toanalyze) {
       if ((!is.null(node.test) && !is.nan(node.test$statistic) && abs(node.test$statistic) > abst) ||
           (!is.null(age.test) && !all(is.nan(pvec)) && any(pvec < .01))) {
         
-        results[[sigres]] <- list(nodename=as.character(atlas[n,5]), ttest=node.test, 
+        results[[sigres]] <- list(nodename=as.character(atlas$anat_label[atlas$vname == n]), ttest=node.test, 
                                   metric = m, agetest=age.test, nodenum=n)
         sigres <- sigres+1
       }
     }
 }
 
-
-
-results.df <- do.call(rbind, results)
+#results
 
 ####BPD main effects 
 results.ttest <- lapply(results, function(node){
@@ -455,10 +459,10 @@ results.ttest <- lapply(results, function(node){
 })
 
 results.ttest.df <- do.call(rbind, results.ttest)
-a <- results.ttest.df %>% arrange(nodename, metric) %>% filter(metric == "central" & p.value < .005)
-b <- results.ttest.df %>% arrange(nodename, metric) %>% filter(metric == "between.node" & p.value < .005)
-c <- results.ttest.df %>% arrange(nodename, metric) %>% filter(metric == "within.mod" & p.value < .005)
-d <- results.ttest.df %>% arrange(nodename, metric) %>% filter(metric == "between.mod" & p.value < .005)
+a <- results.ttest.df %>% arrange(nodename, metric) %>% filter(metric == "central" & p.value < .01)
+b <- results.ttest.df %>% arrange(nodename, metric) %>% filter(metric == "between.node" & p.value < .01)
+c <- results.ttest.df %>% arrange(nodename, metric) %>% filter(metric == "within.mod" & p.value < .01)
+d <- results.ttest.df %>% arrange(nodename, metric) %>% filter(metric == "between.mod" & p.value < .01)
 
 ####Age and agexbpd lm 
 results.agetest <- lapply(results, function(node){
