@@ -135,3 +135,29 @@ plotMetricQuant <- function(obj, q, metric, atlas) {
   return(atlas.quant)
 }   
 
+#simple function to apply density thresholding to a weighted graph
+density_threshold <- function(g, d) {
+  stopifnot(is_igraph(g))
+  stopifnot(is.numeric(d) && d <= 1.0)
+  #Obtains desired density given graph diameter
+  weights <- sort(E(g)$weight, decreasing=TRUE)
+  threshold <- weights[length(V(g))*(length(V(g))-1)/2 * d]
+  gthresh <- delete.edges(g, which(E(g)$weight < threshold))
+  gthresh <- remove.edge.attribute(gthresh, "weight")
+  gthresh$density <- d #copy density into object for tracking
+  return(gthresh)  
+}
+
+
+#small helper function to just load the nodal metrics data.frame (see compute_nodal_metrics for code that creates this structure)
+load_nodal_metrics_df <- function() {
+  expectFile <- file.path(basedir, "cache", paste0("dthreshnodemetrics_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
+  if (file.exists(expectFile)) {
+    message("Loading density-thresholded nodal statistics from file: ", expectFile)
+    load(expectFile)
+    return(allmetrics.nodal.df)
+  } else {
+    warning("Cannot find file: ", expectFile, ". You should run rs_setup_graphs.R for this pipeline.")
+    return(NULL)
+  }
+}

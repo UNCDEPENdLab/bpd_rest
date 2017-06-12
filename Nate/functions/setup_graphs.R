@@ -2,12 +2,12 @@ setup_graphs <- function(adjmatarray, allowCache=TRUE, ncpus=4) {
   #expects a subjects x ROIs x ROIs array
   #creates igraph objects from adjacency matrix and label nodes V1, V2,...
   #looks up atlas from global environment
-  require(igraph)
-  require(foreach)
-  require(doSNOW)
+  suppressMessages(require(igraph))
+  suppressMessages(require(foreach))
+  suppressMessages(require(doSNOW))
   
   #### Setup basic weighted graphs
-  expectFile <- file.path(basedir, "cache", paste0("weightedgraphs_", parcellation, "_", pipeline, ".RData"))
+  expectFile <- file.path(basedir, "cache", paste0("weightedgraphs_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
   if (file.exists(expectFile) && allowCache==TRUE) {
     message("Loading weighted graph objects from file: ", expectFile)
     load(expectFile)
@@ -25,7 +25,7 @@ setup_graphs <- function(adjmatarray, allowCache=TRUE, ncpus=4) {
   }
   
   #### Setup weighted graphs, removing negative edges
-  expectFile <- file.path(basedir, "cache", paste0("weightedgraphsnoneg_", parcellation, "_", pipeline, ".RData"))
+  expectFile <- file.path(basedir, "cache", paste0("weightedgraphsnoneg_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
   if (file.exists(expectFile) && allowCache==TRUE) {
     message("Loading weighted non-negative graph objects from file: ", expectFile)
     load(expectFile)
@@ -38,7 +38,7 @@ setup_graphs <- function(adjmatarray, allowCache=TRUE, ncpus=4) {
   ### DENSITY THRESHOLDING: binarize and threshold graphs at densities ranging from 1-20%
   #uses densities_desired from setup_globals.R
   
-  expectFile <- file.path(basedir, "cache", paste0("dthreshgraphs_", parcellation, "_", pipeline, ".RData"))
+  expectFile <- file.path(basedir, "cache", paste0("dthreshgraphs_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
   if (file.exists(expectFile) && allowCache==TRUE) {
     message("Loading density-thresholded graph objects from file: ", expectFile)
     load(expectFile)
@@ -48,20 +48,11 @@ setup_graphs <- function(adjmatarray, allowCache=TRUE, ncpus=4) {
     registerDoSNOW(clusterobj)
     
     #make sure .inorder = TRUE to keep subject sorting the same in a parallel loop
-    allg_density <- foreach(g=allg_noneg, .packages=c("igraph", "tidyr"), .export="densities_desired", .inorder = TRUE) %dopar% {
-      nnodes <- length(V(g))
-      maxedges <- (nnodes*(nnodes-1))/2
+    allg_density <- foreach(g=allg_noneg, .packages=c("igraph", "tidyr"), .export=c("densities_desired", "density_threshold"), .inorder = TRUE) %dopar% {
+      #nnodes <- length(V(g))
+      #maxedges <- (nnodes*(nnodes-1))/2
       
-      #much less clunky version than the density thresholding below
-      dgraphs <- lapply(densities_desired, function(d) {
-        #Obtains desired density given graph diameter
-        weights <- sort(E(g)$weight, decreasing=TRUE)
-        threshold <- weights[length(V(g))*(length(V(g))-1)/2 * d]
-        gthresh <- delete.edges(g, which(E(g)$weight < threshold))
-        gthresh <- remove.edge.attribute(gthresh, "weight")
-        return(gthresh)
-      })
-      
+      dgraphs <- lapply(densities_desired, density_threshold, g=g) #implicitly passes the dth element of densities_desired to density_threshold function      
       names(dgraphs) <- paste0("d", densities_desired)
       return(dgraphs)
     }

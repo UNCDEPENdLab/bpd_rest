@@ -61,3 +61,7 @@ Nate/cachedRfiles
 Nate/adjmats_269_pearson
 Nate/adjmats_269_scotmi
 Nate/.Rapp.history
+
+#big files in here: don't commit
+adjmats
+cache

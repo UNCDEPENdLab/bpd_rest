@@ -1,11 +1,11 @@
 #use caching
 import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL) {
   #NB. several variables are (implicitly) pulled from the global environment here:
-  #   nnodes, parcellation, pipeline, basedir
+  #   nnodes, parcellation, conn_method, basedir
   #Whether this is optimal programming is open to debate
 
   stopifnot(file.exists(file.path(basedir, "cache")))
-  expectFile <- file.path(basedir, "cache", paste0("adjmats_", parcellation, "_", pipeline, ".RData"))
+  expectFile <- file.path(basedir, "cache", paste0("adjmats_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
   if (file.exists(expectFile) && allowCache==TRUE) {
     message("Loading raw adjacency matrices from file: ", expectFile)
     load(expectFile)
@@ -16,11 +16,11 @@ import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL) {
     allmats <- array(NA, c(nrow(subj_info), nnodes, nnodes), 
                      dimnames=list(id = subj_info$SPECC_ID, roi1=paste0("V", 1:nnodes), roi2=paste0("V", 1:nnodes)))
     
-    sep=ifelse(pipeline=="scotmi", ",", "") #for use in read.table command
+    sep=ifelse(conn_method=="scotmi", ",", "") #for use in read.table command
 
     for (f in 1:nrow(subj_info)) {
       m <- as.matrix(read.table(as.character(subj_info[f,"file"]), sep=sep, header=FALSE))
-      if (pipeline=="scotmi") {
+      if (conn_method=="scotmi") {
         m <- rbind(array(NaN, ncol(m)), m) #append a NaN vector onto first row (omitted from SCoTMI output)
         m[upper.tri(m)] <- t(m)[upper.tri(m)] #populate upper triangle for symmetry
       }

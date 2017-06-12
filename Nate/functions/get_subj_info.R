@@ -1,4 +1,4 @@
-get_subj_info <- function(adjmats_base, parcellation, pipeline, file_extension=".txt.gz") {
+get_subj_info <- function(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".txt.gz") {
   ################################################################################
   #################read in demographic info and combine with proper files in correct directory
   SPECC_rest <- read.csv("SPECC_Participant_Info.csv", header = TRUE, stringsAsFactors = FALSE)
@@ -9,18 +9,18 @@ get_subj_info <- function(adjmats_base, parcellation, pipeline, file_extension="
   SPECC_rest$DOB <- as.Date(SPECC_rest$DOB, format="%m/%d/%y")
   SPECC_rest <- subset(SPECC_rest, HasRest==1 & FMRI_Exclude==0)
   
-  #expects a base directory (e.g., "adjmats") with subdirectories of <parcellation>_<pipeline> (e.g., power269_pearson)
-  adjexpect <- file.path(adjmats_base, paste(parcellation, pipeline, sep="_"))
-  stopifnot(file.exists(adjexpect)) #check existence of expected directory
+  #expects a base directory (e.g., "adjmats") with subdirectories of <parcellation>_<conn_method> (e.g., power269_pearson)
+  adjexpect <- file.path(adjmats_base, paste(parcellation, preproc_pipeline, conn_method, sep="_"))
+  if (!file.exists(adjexpect)) { stop("Cannot find expected file: ", adjexpect) } #check existence of expected directory
   
   #populate file field of subj info and verify file existence
   #figure out all proper IDs and date formats up front (Luna or SPECC)
   expectid <- with(SPECC_rest, ifelse(LunaMRI == 1, Luna_ID, SPECC_ID))
   expectdate <- with(SPECC_rest, ifelse(LunaMRI == 1, format(ScanDate, "%Y%m%d"), format(ScanDate, "%d%b%Y")))
   
-  #files should be named <ID>_<DATE>_<PARCELLATION>_<PIPELINE><FILE_EXTENSION>
+  #files should be named <ID>_<DATE>_<PARCELLATION>_<CONN_METHOD><FILE_EXTENSION>
   for (i in 1:nrow(SPECC_rest)) {
-    fname <- file.path(adjexpect, tolower(paste0(expectid[i], "_", expectdate[i], "_", parcellation, "_", pipeline, file_extension)))
+    fname <- file.path(adjexpect, tolower(paste0(expectid[i], "_", expectdate[i], "_", parcellation, "_", conn_method, file_extension)))
     if (!file.exists(fname)) { 
       stop("Cannot find expected adjacency matrix: ", fname) 
     } else {
