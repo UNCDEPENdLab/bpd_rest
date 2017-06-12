@@ -1,0 +1,48 @@
+Dependencies:
+
+CMake
+Armadillo
+BLAS
+
+All 3 must be installed (CMake required to install Armadillo) and on libpath
+
+Notes:
+
+-Node numbering must start at 1
+-Assumes no edge unless explicitly defined (directed graph format)
+-Sparse matrix files should have lines in the format 'src dest 1' (relative order of lines does not matter) - do not use the quotes
+
+Build as follows:
+
+make
+
+OR
+
+make demo (for demo on input files B5.txt and B5_mod.txt - barbell graph and modified barbell graph)
+
+Run as follows:
+
+./deltacon filelist window-size naive|fast group-fraction 
+
+Parameters:
+
+filelist: list of input data files in sparse format (if they are time-evolving, list the paths in that order, one per line)
+
+window-size: number of files from filelist to consider as "1 graph" - 2 means first 2 files together comprise 1 graph - in general, a sliding window of size window-size is used to iterate over the filelist
+
+naive|fast: naive uses the quadratic, but exact DeltaCon0 method (as referred to in the paper), fast uses approximate but linear on #edges DeltaCon method
+
+group-fraction: decimal value, used to specify approx. how many of the nodes should be in each group if doing fast (include group fraction even if naive - only used if fast - normally use 0.1~ but can vary);
+
+Interpreting Output:
+
+Output is structured as follows...
+
+Node Attribution results (in format 'node node-attr-score')
+
+Edge Attribution results (in format 'srcnode destnode plus-or-minus-symbol edge-attr-score')
+
+Similarity score (0 is completely dissimilar, 1 is completely similar)
+Timings (in seconds)
+
+
