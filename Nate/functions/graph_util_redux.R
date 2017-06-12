@@ -118,36 +118,44 @@ NodeFile <- function(atlas, community = NULL, nodestp = NULL, nodevals = NULL, n
 
 #######################################################################################################################
 ##tagGraph: tags igraph object with mni coordinates, brodmanns areas
-      
-tagGraph <- function(gobj, mergeby="vname", nodefile, atlasname) {
+tagGraph <- function(gobj, atlas, nodefile) {
+  require(dplyr)
+  
   if (!is.igraph(gobj)) {
     stop(sprintf("%s is not a graph object", deparse(substitute(gobj))))
   }
   
-  f <- read.csv(nodefile) #this should be a csv file containing minimally MNI x, y, z, and Label. Could also contain a given community structure (e.g., Power's)
+  stopifnot(inherits(atlas, "data.frame")) #atlas should be a data.frame
   
-  #these are required
-  stopifnot(all(c("x.mni", "y.mni", "z.mni", "anat_label", mergeby) %in% names(f)))
-  
+  #these are required fields
+  stopifnot(all(c("x.mni", "y.mni", "z.mni", "anat_label", "name") %in% names(atlas)))
   #match merge the observed graph against the master lookup
   #this is because the number of nodes in the graph may be a subset of the master (e.g., 240 of 264 nodes)
-  vnames <- data.frame(v = V(gobj)$name)
-  names(vnames) <- mergeby
-  f <- merge(f, mergeby, all.x=TRUE)
+  gobj_vertices <- data.frame(name = V(gobj)$name, number=1:length(V(gobj)), stringsAsFactors = FALSE) # $name is convention in igraph for node naming
+  vmerge <- merge(gobj_vertices, atlas, by="name", all.x=TRUE) #merge atlas attributes onto available nodes
+  
+  #must ensure that vmerge is sorted in the same order as gobj_vertices (merge will alpha sort the name field)
+  #otherwise, assignment of attributes below could be completely out of order!
+  vmerge <- vmerge %>% arrange(number) %>% select(-number) #drop number to skip adding as vertex attribute
   
   #read in the MNI coords (264 x 3) where 3 is x y z in MNI space
-  hemi <- sapply(f$x.mni, function(x) { if (x < 0) { "L" } else { "R" } })
-  V(gobj)$hemi <- hemi
+  #currently exported hemisphere into the atlas csv file
+  #hemi <- sapply(vmerge$x.mni, function(x) { if (x < 0) { "L" } else { "R" } })
+  #V(gobj)$hemi <- hemi
   
   #loop over master attributes in node file and add them as graph attributes
-  toadd <- names(f)
+  toadd <- names(vmerge)
+  
+  #factors in the data.frame can screw up the attribute assignment (become numbers)
+  #explicitly type cast to character
+  atlas <- atlas %>% mutate_if(is.factor, as.character)
   
   for (i in 1:length(toadd)) {
-    gobj <- set_vertex_attr(gobj, toadd[i], value=as.character(f[[toadd[i] ]]))
-    #V(gobj)[[toadd[i]]] <- f[[toadd[i] ]]
+    gobj <- set_vertex_attr(gobj, toadd[i], value=vmerge[[ toadd[i] ]])
   }
   
   return(gobj)
+  
   #in progress for braingraph compatibility
   # V(gobj)
   # 
@@ -181,4 +189,29 @@ plotMetricQuant <- function(obj, q, metric, atlas) {
   return(atlas.quant)
 }   
 
+#simple function to apply density thresholding to a weighted graph
+density_threshold <- function(g, d) {
+  stopifnot(is_igraph(g))
+  stopifnot(is.numeric(d) && d <= 1.0)
+  #Obtains desired density given graph diameter
+  weights <- sort(E(g)$weight, decreasing=TRUE)
+  threshold <- weights[length(V(g))*(length(V(g))-1)/2 * d]
+  gthresh <- delete.edges(g, which(E(g)$weight < threshold))
+  gthresh <- remove.edge.attribute(gthresh, "weight")
+  gthresh$density <- d #copy density into object for tracking
+  return(gthresh)  
+}
 
+
+#small helper function to just load the nodal metrics data.frame (see compute_nodal_metrics for code that creates this structure)
+load_nodal_metrics_df <- function() {
+  expectFile <- file.path(basedir, "cache", paste0("dthreshnodemetrics_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
+  if (file.exists(expectFile)) {
+    message("Loading density-thresholded nodal statistics from file: ", expectFile)
+    load(expectFile)
+    return(allmetrics.nodal.df)
+  } else {
+    warning("Cannot find file: ", expectFile, ". You should run rs_setup_graphs.R for this pipeline.")
+    return(NULL)
+  }
+}

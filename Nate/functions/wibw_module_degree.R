@@ -1,7 +1,11 @@
 #adapted function from igraph
-wibw_module_degree <- function (g) {
+wibw_module_degree <- function (g, community_attr="community") {
   stopifnot(is_igraph(g))
-  memb <- V(g)$community
+  if (is.null(get.vertex.attribute(g, community_attr))) { 
+    warning("Cannot find community vertex attribute: ", community_attr) 
+    return(NULL)
+  }
+  memb <- get.vertex.attribute(g, community_attr)
   modules <- unique(memb)
   N <- length(modules)
   A <- as_adj(g, sparse = FALSE, names = FALSE)
