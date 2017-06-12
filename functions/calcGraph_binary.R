@@ -29,7 +29,7 @@ calcGraph_binary_nodal <- function(origgraph, community_attr="wcomm_louvain") {
   return(allmetrics)
 }
 
-compute_nodal_metrics <- function(allg_density, ncpus=4, allowCache=TRUE) {
+compute_nodal_metrics <- function(allg_density, ncpus=4, allowCache=TRUE, community_attr="wcomm_louvain") {
   require(foreach)
   require(doSNOW)
   
@@ -47,7 +47,7 @@ compute_nodal_metrics <- function(allg_density, ncpus=4, allowCache=TRUE) {
     allmetrics.nodal <- foreach(subj=allg_density, .packages = c("igraph", "brainGraph"), .export=c("calcGraph_binary_nodal", "wibw_module_degree", "densities_desired")) %dopar% {
       #for (subj in allg_density) { #put here for more fine-grained debugging
       dl <- lapply(subj, function(dgraph) {
-        glist <- calcGraph_binary_nodal(dgraph)
+        glist <- calcGraph_binary_nodal(dgraph, community_attr=community_attr)
         glist$id <- dgraph$id #copy attributes for flattening to data.frame
         glist$density <- dgraph$density
         glist$node <- V(dgraph)$name
@@ -92,7 +92,7 @@ calcGraph_binary_global <- function(origgraph, community_attr="wcomm_louvain") {
 }
 
 
-compute_global_metrics <- function(allg_density, ncpus=4, allowCache=TRUE) {
+compute_global_metrics <- function(allg_density, ncpus=4, allowCache=TRUE, community_attr="wcomm_louvain") {
   require(foreach)
   require(doSNOW)
   
@@ -110,7 +110,7 @@ compute_global_metrics <- function(allg_density, ncpus=4, allowCache=TRUE) {
     allmetrics.global <- foreach(subj=allg_density, .packages = c("igraph", "brainGraph"), .export=c("calcGraph_binary_global", "densities_desired")) %dopar% {
       #for (subj in allg_density) { #put here for more fine-grained debugging
       dl <- lapply(subj, function(dgraph) {
-        glist <- calcGraph_binary_global(dgraph)
+        glist <- calcGraph_binary_global(dgraph, community_attr=community_attr)
         glist$id <- dgraph$id #copy attributes for flattening to data.frame
         glist$density <- dgraph$density
         return(glist)

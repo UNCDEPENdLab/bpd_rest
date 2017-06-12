@@ -11,7 +11,7 @@ get_subj_info <- function(adjmats_base, parcellation, conn_method, preproc_pipel
   
   #expects a base directory (e.g., "adjmats") with subdirectories of <parcellation>_<conn_method> (e.g., power269_pearson)
   adjexpect <- file.path(adjmats_base, paste(parcellation, preproc_pipeline, conn_method, sep="_"))
-  if (!file.exists(adjexpect)) { stop("Cannot find expected file: ", adjexpect) } #check existence of expected directory
+  if (!file.exists(adjexpect)) { stop("Cannot find expected directory: ", adjexpect) } #check existence of expected directory
   
   #populate file field of subj info and verify file existence
   #figure out all proper IDs and date formats up front (Luna or SPECC)

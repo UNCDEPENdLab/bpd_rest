@@ -1,7 +1,7 @@
 #Analyses of nodal statistics using PCA to reduce across densities and metrics
 #setup package dependencies and custom functions
 #setwd("~/Box Sync/RS_BPD_graph")
-setwd("/Users/mnh5174/Data_Analysis/bpd_rest/Nate")
+setwd("/Users/mnh5174/Data_Analysis/bpd_rest")
 basedir <- getwd()
 
 require(psych)
@@ -13,7 +13,7 @@ source("functions/graph_util_redux.R") #this will setup details of the parcellat
 nodalmetrics_dthresh_df <- load_nodal_metrics_df() #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
 
 #not used at the moment
-#nodalmetrics_dthresh_df <- factor(nodalmetrics_dthresh_df$density) #to overcome insanity of floating point imprecision if we use density==X approach 
+#nodalmetrics_dthresh_df$density_fac <- factor(nodalmetrics_dthresh_df$density) #to overcome insanity of floating point imprecision if we use density==X approach 
 
 metrics_to_analyze <- c("degree", "eigen.cent", "betweenness.node", "within.module.deg.zscore", "between.module.deg.zscore")
 
@@ -41,7 +41,7 @@ print(pcaout4$loadings, cutoff = 0.5)
 print(pcaout3$loadings, cutoff = 0.5)
 
 pcasolution <- data.frame(pcaout3$scores) #use these, which are the rotated scores, not the raw eigenvectors from $x in prcomp
-names(pcasolution) <- c("central", "between.mod", "between.node")
+names(pcasolution) <- c("central", "within.mod", "between.node")
 
 #this was from Nate's analysis of Pearson. For the AROMA ridge, 3 factors covers 90% of variaence
 #pcasolution <- data.frame(metrics.pca$x[,1:4])

@@ -43,10 +43,10 @@ allg_noneg <- assign_communities(allg_noneg, comm_weighted_louvain, "wcomm_louva
 allg_density <- assign_communities(allg_density, comm_weighted_louvain, "wcomm_louvain")
 
 #compute global metrics on density-thresholded graphs
-globalmetrics_dthresh <- compute_global_metrics(allg_density, allowCache=TRUE)
+globalmetrics_dthresh <- compute_global_metrics(allg_density, allowCache=TRUE, community_attr="wcomm_louvain") #community_attr determines how global/nodal statistics that include community are computed
 
 #compute nodal metrics on density-thresholded graphs
-nodalmetrics_dthresh <- compute_nodal_metrics(allg_density, allowCache=TRUE) #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
+nodalmetrics_dthresh <- compute_nodal_metrics(allg_density, allowCache=TRUE, community_attr="wcomm_louvain") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
 
 
 
