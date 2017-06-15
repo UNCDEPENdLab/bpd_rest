@@ -1,7 +1,7 @@
 ########## RS_BPD_pipeline
 ####read in package dependencies and custom functions
 #setwd("~/Box Sync/RS_BPD_graph")
-setwd("/Users/mnh5174/Data_Analysis/bpd_rest")
+setwd("/Users/michael/Data_Analysis/bpd_rest")
 basedir <- getwd()
 
 source("functions/setup_globals.R") #this will setup details of the parcellation, conn_method, preproc_pipeline, and connection distance
@@ -37,6 +37,8 @@ comm_d20 <- run_community_detection_on_agg(allmats, "louvain", density=0.20)
 compare(comm_weighted_louvain, comm_d15, method="nmi")
 compare(comm_weighted_louvain, comm_d20, method="nmi")
 compare(comm_weighted_louvain, comm_weighted_greedy, method="nmi")
+comm_infomap_d10 <- run_community_detection_on_agg(allmats, "infomap", density=0.10)
+comm_infomap_weighted <- run_community_detection_on_agg(allmats, "infomap", hierarchical=FALSE, verbose=FALSE)
 
 #assign weighted louvain into weighted and density-thresholded structures in attribute "wcomm_louvain"
 allg_noneg <- assign_communities(allg_noneg, comm_weighted_louvain, "wcomm_louvain")

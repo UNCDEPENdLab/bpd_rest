@@ -23,8 +23,7 @@ conn_method <- "ridge.net_partial" #Jun2017: aroma preprocessing, shrinkage esti
 roi.dist <- 20 #distance in mm to zero connections when setting up graphs (cf. Power 2011)
 metricstorun.nodal <- c("eigen.cent","degree", "closeness", "betweenness.node", "page.rank",  "part.coeff", "within.module.deg.zscore", "local.clustering", "gateway.coeff.btw", "gateway.coeff.degree", "between.module.deg.zscore")
 metricstorun.global <- c("characteristic_path_length", "clustering_coefficient", "small_worldness", "modularity")
-#adjmats_base <- file.path(basedir, "adjmats")
-adjmats_base <- file.path("/Users/mnh5174/Data_Analysis/bpd_rest", "adjmats") #should be above, but working from a local copy to avoid messing up existing things
+adjmats_base <- file.path(basedir, "adjmats")
 densities_desired <- seq(.01, .2, .01) #used globally for binary graphs
 
 message("Initializing RS graph analysis with the following settings: ")
