@@ -15,6 +15,8 @@ run_community_detection_on_agg <- function(allmats, algorithm="louvain", density
     comm <- cluster_louvain(agg.g)    
   } else if (algorithm=="fast_greedy") {
     comm <- cluster_fast_greedy(agg.g)
+  } else if (algorithm == "infomap"){
+    comm <- cluster_infomap(agg.g)
   } else { stop ("Not supported yet") }
   
   return(comm)

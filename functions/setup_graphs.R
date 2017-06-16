@@ -14,7 +14,7 @@ setup_graphs <- function(adjmatarray, allowCache=TRUE, ncpus=4) {
   } else {
     allg <- apply(adjmatarray, 1, function(sub) {
       g <- graph.adjacency(sub, mode="undirected", weighted=TRUE, diag=FALSE)
-      V(g)$name <- paste0("V", 1:nrow(sub))
+      V(g)$name <- c(paste0("V", 1:248),paste0("V", 251:271))
       g <- tagGraph(g, atlas) #populate all attributes from atlas to vertices
       return(g)
     })

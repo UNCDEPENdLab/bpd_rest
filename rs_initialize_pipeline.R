@@ -1,7 +1,7 @@
 ########## RS_BPD_pipeline
 ####read in package dependencies and custom functions
-#setwd("~/Box Sync/RS_BPD_graph")
-setwd("/Users/mnh5174/Data_Analysis/bpd_rest")
+setwd("~/Box Sync/DEPENd/Projects/bpd_rest/")
+#setwd("/Users/mnh5174/Data_Analysis/bpd_rest")
 basedir <- getwd()
 
 source("functions/setup_globals.R") #this will setup details of the parcellation, conn_method, preproc_pipeline, and connection distance
@@ -14,7 +14,7 @@ source("functions/graph_util_redux.R")
 source("functions/run_parse_deltacon.R")
 source("functions/wibw_module_degree.R")
 
-#get_subj info here
+#get_subj info here, includes motion exclusion procedure
 subj_info <- get_subj_info(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".txt.gz")
 
 #import raw adjacency matrices here (subj_info already contains the identified raw files)
@@ -32,15 +32,39 @@ rm(gobjs) #remove from environment to save memory
 #estimate and setup community structure
 comm_weighted_louvain <- run_community_detection_on_agg(allmats, "louvain")
 comm_weighted_greedy <- run_community_detection_on_agg(allmats, "fast_greedy")
-comm_d15 <- run_community_detection_on_agg(allmats, "louvain", density=0.15)
+# comm_weighted_infomap <- run_community_detection_on_agg(allmats, "infomap")
+
+comm_d05 <- run_community_detection_on_agg(allmats, "louvain", density=0.05)
+comm_d10 <- run_community_detection_on_agg(allmats, "louvain", density=0.10)
+comm_d15 <- run_community_detection_on_agg(allmats, "louvain", density = 0.15)
 comm_d20 <- run_community_detection_on_agg(allmats, "louvain", density=0.20)
-compare(comm_weighted_louvain, comm_d15, method="nmi")
-compare(comm_weighted_louvain, comm_d20, method="nmi")
-compare(comm_weighted_louvain, comm_weighted_greedy, method="nmi")
+compare(comm_weighted_louvain, comm_d05, method="nmi")
+compare(comm_weighted_louvain, comm_d10, method="nmi")
+compare(comm_weighted_louvain, comm_d15, method = "nmi")
+compare(comm_weighted_louvain, comm_d20, method = "nmi")
+compare(comm_weighted_louvain, comm_weighted_greedy)
+compare(comm_d20, comm_d10, method = "nmi")
+compare(comm_d05, comm_weighted_greedy, method="nmi")
 
 #assign weighted louvain into weighted and density-thresholded structures in attribute "wcomm_louvain"
-allg_noneg <- assign_communities(allg_noneg, comm_weighted_louvain, "wcomm_louvain")
-allg_density <- assign_communities(allg_density, comm_weighted_louvain, "wcomm_louvain")
+allg_noneg <- assign_communities(allg_noneg, comm_weighted_louvain, "comm_weighted_louvain")
+#allg_density <- assign_communities(allg_density, comm_weighted_louvain, "wcomm_louvain")
+
+allg_noneg_comm1 <- get.vertex.attribute(allg_noneg$`001RA`)$name[which(get.vertex.attribute(allg_noneg$`001RA`)$comm_weighted_louvain == 1)]
+allg_noneg_comm2 <- as.numeric(gsub("V", "", get.vertex.attribute(allg_noneg$`001RA`)$name))[which(get.vertex.attribute(allg_noneg$`001RA`)$comm_weighted_louvain == 2)]
+allg_noneg_comm3 <- as.numeric(gsub("V", "", get.vertex.attribute(allg_noneg$`001RA`)$name))[which(get.vertex.attribute(allg_noneg$`001RA`)$comm_weighted_louvain == 3)]
+allg_noneg_comm4 <- as.numeric(gsub("V", "", get.vertex.attribute(allg_noneg$`001RA`)$name))[which(get.vertex.attribute(allg_noneg$`001RA`)$comm_weighted_louvain == 4)]
+allg_noneg_comm5 <- as.numeric(gsub("V", "", get.vertex.attribute(allg_noneg$`001RA`)$name))[which(get.vertex.attribute(allg_noneg$`001RA`)$comm_weighted_louvain == 5)]
+
+
+node.file <- NodeFile(atlas = atlas, 
+                      # community = get.vertex.attribute(allg_noneg$`001RA`)$comm_weighted_louvain == 1,
+                      nnodes = nnodes,
+                      nodestp = allg_noneg_comm1,
+                      labels = 0,
+                      filename = paste0(parcellation, "_", preproc_pipeline, "_", conn_method, "_comm_weighted_louvain_1"),
+                      outputdir = paste0(getwd(), "/BNV_nodefiles/weighted_ridge_comms")
+)
 
 #compute global metrics on density-thresholded graphs
 globalmetrics_dthresh <- compute_global_metrics(allg_density, allowCache=TRUE)
@@ -52,44 +76,7 @@ nodalmetrics_dthresh <- compute_nodal_metrics(allg_density, allowCache=TRUE) #th
 
 
 
-
 ###STOPPED HERE: IN PROGRESS
-
-
-
-
-################################################################################
-#######read in already processed Rdata files for faster run throughs:
-
-
-
-#significant nodal comparisons
-#if(file.exists(paste0(basedir, "/cachedRfiles/node.metrics.binary.",pipeline,".RData")) == TRUE) {
-#  node.metrics <- get(load(paste0(basedir, "/cachedRfiles/node.metrics.binary.",pipeline,".RData")))
-#}
-##compiled significant nodal comparisons
-#if(file.exists(paste0(basedir, "/output.files/all.sig.nodal.",pipeline,".rds")) == TRUE) {
-#  all.sig.nodal <- read.csv(paste0(basedir, "/output.files/all.sig.nodal.",pipeline,".csv"))
-#}
-##total deltacon stats
-#if(file.exists(paste0(basedir, "/output.files/deltacon_total_", pipeline, ".rds")) == TRUE) {
-#  deltacon_total <- readRDS(paste0(basedir, "/output.files/deltacon_total_", pipeline, ".rds"))
-#}
-##edge attribution deltacon values
-#if(file.exists(paste0(basedir, "/output.files/edge_diffs_deltacon_", pipeline, ".rds")) == TRUE) {
-#  edge_diffs_deltacon <- readRDS(paste0(basedir, "/output.files/edge_diffs_deltacon_", pipeline,".rds"))
-#}
-##nodal attribution deltacon values
-#if(file.exists(paste0(basedir, "/output.files/node_stats_deltacon_", pipeline, ".rds")) == TRUE) {
-#  node_stats_deltacon <- readRDS(paste0(basedir, "/output.files/node_stats_deltacon_", pipeline, ".rds"))
-#}
-
-#check num of edges across subjs
-# for (subj in 1:length(allg)){
-#   print(length(E(allg_noneg[[subj]])))
-# }
-
-
 
 #mean.g.infomap
 

@@ -28,20 +28,14 @@ get_subj_info <- function(adjmats_base, parcellation, conn_method, preproc_pipel
     }
     
   }
-  # ################################################################################
-  # ####Framewise displacement
-  # #####filter subjects with over .20 brain volumes displaced .5mm or more
-  # 
-  # ##In progress (make sure ics is mounted): get motion info (notes on how to implement this in RS notes folder in OneNote)
-  # ####this should include mean FD and max FD at the very least, standard script removes subjects with proportion of FD >.5mm of 20% or more 
-  # #####currently no safeguard against very large head movements
-  # 
-  # ##standard FD script
-  # SPECC_rest <- filter(SPECC_rest, pr_over5mm <= .15)
-  # # SPECC_rest <- filter(SPECC_rest, pr_over5mm <= .2)
-  # table(SPECC_rest[,c(3,5)])
-  # 
-  # describe(SPECC_rest[,c(1:6, 8)])
+ 
   
-  return(SPECC_rest)
+  if(!dir.exists("/mnt/ics/SPECC")) {message("ICS folder not mounted, unable to read FD.txt files")}
+  #NOTE: dir command leads to ICS directory, which needs to be mounted on your computer
+  
+  #scrub subjects with lot's of movement:
+  SPECC_rest_scrub <- filter_movement(SPECC_rest, "/mnt/ics", 0.5, .20, 10)
+  row.names(SPECC_rest_scrub) <- seq(1, length(SPECC_rest_scrub[,1]), 1)
+  
+  return(SPECC_rest_scrub)
 }
