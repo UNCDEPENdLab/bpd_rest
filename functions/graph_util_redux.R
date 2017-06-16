@@ -226,7 +226,7 @@ load_nodal_metrics_df <- function() {
     load(expectFile)
     return(allmetrics.nodal.df)
   } else {
-    warning("Cannot find file: ", expectFile, ". You should run rs_setup_graphs.R for this pipeline.")
+    warning("Cannot find file: ", expectFile, ". You should run rs_initialize_graphs.R for this pipeline.")
     return(NULL)
   }
 }

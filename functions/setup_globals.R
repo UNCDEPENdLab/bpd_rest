@@ -12,9 +12,9 @@ use.infomap <- 1
 preproc_pipeline <- "aroma" #method for data preprocessing. This corresponds to mni_5mm_aroma data
 
 #conn_method <- "pearson" #Jun2017: aroma preprocessing, pearson correlations
-#conn_method <- "cor.shrink" #Jun2017: aroma preprocessing, shrinkage estimator of correlation
+conn_method <- "cor.shrink" #Jun2017: aroma preprocessing, shrinkage estimator of correlation
 #conn_method <- "pcor.shrink_partial" #Jun2017: aroma preprocessing, shrinkage estimator of *partial* correlation
-conn_method <- "ridge.net_partial" #Jun2017: aroma preprocessing, shrinkage estimator of *partial* correlation
+#conn_method <- "ridge.net_partial" #Jun2017: aroma preprocessing, shrinkage estimator of *partial* correlation
 
 #conn_method <- "pearson_fisherz" #uses older files (I believe from wavelet)
 
@@ -25,6 +25,7 @@ metricstorun.nodal <- c("eigen.cent","degree", "closeness", "betweenness.node", 
 metricstorun.global <- c("characteristic_path_length", "clustering_coefficient", "small_worldness", "modularity")
 adjmats_base <- file.path(basedir, "adjmats")
 #adjmats_base <- file.path("/Users/mnh5174/Data_Analysis/bpd_rest", "adjmats") #should be above, but working from a local copy to avoid messing up existing things
+
 densities_desired <- seq(.01, .2, .01) #used globally for binary graphs
 
 message("Initializing RS graph analysis with the following settings: ")

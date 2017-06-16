@@ -1,4 +1,4 @@
-run_community_detection_on_agg <- function(allmats, algorithm="louvain", density=NULL, aggfun=mean) {
+run_community_detection_on_agg <- function(allmats, algorithm="louvain", density=NULL, aggfun=mean, ...) {
   #Run community detection on mean graph (across all subjects in 3d array passed in)
   #allmats_log <- apply(allmats, c(1,2,3), function(x) { log(x+.05)})
   #NB. If no density threshold is applied, cluster_* runs weighted community detection
@@ -15,8 +15,8 @@ run_community_detection_on_agg <- function(allmats, algorithm="louvain", density
     comm <- cluster_louvain(agg.g)    
   } else if (algorithm=="fast_greedy") {
     comm <- cluster_fast_greedy(agg.g)
-  } else if (algorithm == "infomap"){
-    comm <- cluster_infomap(agg.g)
+  } else if (algorithm=="infomap") {
+    comm <- runinfomap(agg.g, ...) #compiled C++ version of infomap 
   } else { stop ("Not supported yet") }
   
   return(comm)

@@ -1,7 +1,9 @@
 ########## RS_BPD_pipeline
 ####read in package dependencies and custom functions
-setwd("~/Box Sync/DEPENd/Projects/bpd_rest/")
+
+setwd("~/Box Sync/DEPENd/Projects/RS_BPD_graph/bpd_rest/")
 #setwd("/Users/mnh5174/Data_Analysis/bpd_rest")
+
 basedir <- getwd()
 
 source("functions/setup_globals.R") #this will setup details of the parcellation, conn_method, preproc_pipeline, and connection distance
@@ -13,6 +15,7 @@ source("functions/setup_community.R")
 source("functions/graph_util_redux.R")
 source("functions/run_parse_deltacon.R")
 source("functions/wibw_module_degree.R")
+source("Infomap/infomap_communities.R")
 
 #get_subj info here, includes motion exclusion procedure
 subj_info <- get_subj_info(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".txt.gz")
@@ -38,13 +41,19 @@ comm_d05 <- run_community_detection_on_agg(allmats, "louvain", density=0.05)
 comm_d10 <- run_community_detection_on_agg(allmats, "louvain", density=0.10)
 comm_d15 <- run_community_detection_on_agg(allmats, "louvain", density = 0.15)
 comm_d20 <- run_community_detection_on_agg(allmats, "louvain", density=0.20)
-compare(comm_weighted_louvain, comm_d05, method="nmi")
-compare(comm_weighted_louvain, comm_d10, method="nmi")
-compare(comm_weighted_louvain, comm_d15, method = "nmi")
-compare(comm_weighted_louvain, comm_d20, method = "nmi")
-compare(comm_weighted_louvain, comm_weighted_greedy)
-compare(comm_d20, comm_d10, method = "nmi")
-compare(comm_d05, comm_weighted_greedy, method="nmi")
+# compare(comm_weighted_louvain, comm_d05, method="nmi")
+# compare(comm_weighted_louvain, comm_d10, method="nmi")
+# compare(comm_weighted_louvain, comm_d15, method = "nmi")
+# compare(comm_weighted_louvain, comm_d20, method = "nmi")
+# compare(comm_weighted_louvain, comm_weighted_greedy)
+# compare(comm_d20, comm_d10, method = "nmi")
+# compare(comm_d05, comm_weighted_greedy, method="nmi")
+# compare(comm_weighted_louvain, comm_d15, method="nmi")
+# compare(comm_weighted_louvain, comm_d20, method="nmi")
+# compare(comm_weighted_louvain, comm_weighted_greedy, method="nmi")
+comm_infomap_d10 <- run_community_detection_on_agg(allmats, "infomap", density=0.10)
+comm_infomap_weighted <- run_community_detection_on_agg(allmats, "infomap", hierarchical=FALSE, verbose=FALSE)
+
 
 #assign weighted louvain into weighted and density-thresholded structures in attribute "wcomm_louvain"
 allg_noneg <- assign_communities(allg_noneg, comm_weighted_louvain, "comm_weighted_louvain")
@@ -67,10 +76,10 @@ node.file <- NodeFile(atlas = atlas,
 )
 
 #compute global metrics on density-thresholded graphs
-globalmetrics_dthresh <- compute_global_metrics(allg_density, allowCache=TRUE)
+globalmetrics_dthresh <- compute_global_metrics(allg_density, allowCache=TRUE, community_attr="wcomm_louvain") #community_attr determines how global/nodal statistics that include community are computed
 
 #compute nodal metrics on density-thresholded graphs
-nodalmetrics_dthresh <- compute_nodal_metrics(allg_density, allowCache=TRUE) #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
+nodalmetrics_dthresh <- compute_nodal_metrics(allg_density, allowCache=TRUE, community_attr="wcomm_louvain") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
 
 
 
