@@ -12,9 +12,9 @@ use.infomap <- 1
 preproc_pipeline <- "aroma" #method for data preprocessing. This corresponds to mni_5mm_aroma data
 
 #conn_method <- "pearson" #Jun2017: aroma preprocessing, pearson correlations
-conn_method <- "cor.shrink" #Jun2017: aroma preprocessing, shrinkage estimator of correlation
+#conn_method <- "cor.shrink" #Jun2017: aroma preprocessing, shrinkage estimator of correlation
 #conn_method <- "pcor.shrink_partial" #Jun2017: aroma preprocessing, shrinkage estimator of *partial* correlation
-#conn_method <- "ridge.net_partial" #Jun2017: aroma preprocessing, shrinkage estimator of *partial* correlation
+conn_method <- "ridge.net_partial" #Jun2017: aroma preprocessing, shrinkage estimator of *partial* correlation
 
 #conn_method <- "pearson_fisherz" #uses older files (I believe from wavelet)
 
@@ -73,6 +73,7 @@ suppressMessages(library(igraph))
 suppressMessages(library(RGtk2))
 suppressMessages(library(brainGraph))
 suppressMessages(library(ggplot2))
+suppressMessages(library(plyr))
 suppressMessages(library(dplyr))
 suppressMessages(library(gdata))
 suppressMessages(library(beepr))

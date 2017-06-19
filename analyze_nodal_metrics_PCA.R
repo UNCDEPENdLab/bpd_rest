@@ -1,13 +1,15 @@
 #Analyses of nodal statistics using PCA to reduce across densities and metrics
 #setup package dependencies and custom functions
 #setwd("~/Box Sync/RS_BPD_graph")
-setwd("/Users/mnh5174/Data_Analysis/bpd_rest")
+# setwd("/Users/mnh5174/Data_Analysis/bpd_rest")
+setwd("~/Box Sync/DEPENd/Projects/RS_BPD_graph/bpd_rest/")
 basedir <- getwd()
 
 require(psych)
 
 source("functions/setup_globals.R") #this will setup details of the parcellation, conn_method, preproc_pipeline, and connection distance
-source("functions/graph_util_redux.R") #this will setup details of the parcellation, conn_method, preproc_pipeline, and connection distance
+source("functions/graph_util_redux.R") 
+source("functions/get_subj_info.R")
 
 #load nodal statistics for the current pipeline
 nodalmetrics_dthresh_df <- load_nodal_metrics_df() #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
@@ -21,7 +23,7 @@ metrics_to_analyze <- c("degree", "eigen.cent", "betweenness.node", "within.modu
 #PCA on latent degree/ eigenvector across densities
 
 #stack metrics in data.frame to have subjects, nodes, densities, *and* metrics on the rows
-metrics.raw <- nodalmetrics_dthresh_df %>% select(c(metrics_to_analyze, "id", "node", "density")) %>%
+metrics.raw <- nodalmetrics_dthresh_df %>% select_(.dots = c(metrics_to_analyze, "id", "node", "density")) %>%
     filter(density > .04) %>% gather(key="variable", value="value", degree, eigen.cent, betweenness.node, within.module.deg.zscore, between.module.deg.zscore)
 
 

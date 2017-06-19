@@ -1,5 +1,5 @@
 ###################################################################################
-##Graph Utility Functions: NodeFile(), tagGraph(), plotMetricQuant(), getMotionInfo()
+##Graph Utility Functions: NodeFile(), tagGraph(), plotMetricQuant(), filter_movement()
 ##MotionInfoSPEC: function pulls motion info from specified dir and exports a list containing: 
 #directories not found, fd.txt files not found, raw FD data, and a table with relevant FD information based on specifications 
 filter_movement <- function(subj_info, dir, thresh, spikes.exclude, max.exclude){
@@ -77,15 +77,14 @@ NodeFile <- function(atlas, community = NULL, nodestp = NULL, nodevals = NULL, n
   #community can be set to community membership, whether higher in BPD/ controls, or anything else  
   #labels set equal to either 1 (full anatomical label) or 2 (node number [i.e. V_1...])
   
-  
   nf <- atlas
   #if want to read in a csv rather than a predfined atlas in R
   #nf <- read.csv(atlas, header = TRUE)        #####csv file should have at least mni attributes and anatomical labels
   vnames <- data.frame(atlas[,"name"])
   names(vnames) = "vname"
   stopifnot(all(c("x.mni", "y.mni", "z.mni", "anat_label") %in% names(nf)))
-  row.names(nf) <- c(seq(1, 248, 1), seq(251, 271, 1))
-  
+  # row.names(nf) <- c(seq(1, 248, 1), seq(251, 271, 1))
+  row.names(nf) <- sort(as.numeric(gsub("V", "", vnames[,1])))
  
   if(!is.null(community)){
     commvals <- community
@@ -98,7 +97,7 @@ NodeFile <- function(atlas, community = NULL, nodestp = NULL, nodevals = NULL, n
    # browser()
   if(!is.null(nodestp)) {
     nf <- nf[which(nf$name %in% nodestp),]
-    commvals <- commvals[which(as.numeric(names(commvals)) %in% nodestp)]
+    commvals <- commvals[which(names(commvals) %in% nodestp)]
     # nf$anat_label <- paste0("V_", nf$vname)
     # nf <- nf %>% select(-vname)
     #names(nodevals) <- vnames$vname
@@ -106,13 +105,13 @@ NodeFile <- function(atlas, community = NULL, nodestp = NULL, nodevals = NULL, n
     if(is.null(nodevals)){
       nodevals <- rep(1, length(nodestp))
     } else {
-      nodevals <- nodevals[which(as.numeric(names(nodevals)) %in% nodestp)]
+      nodevals <- nodevals[which(names(nodevals) %in% nodestp)]
     }
   } else {
     if(is.null(nodevals)){
       nodevals <- rep(1, nnodes)
     } else {
-      nodevals <- nodevals[which(as.numeric(names(nodevals)) %in% nodestp)]
+      nodevals <- nodevals[which(names(nodevals) %in% nodestp)]
     }
   }
   
@@ -229,4 +228,27 @@ load_nodal_metrics_df <- function() {
     warning("Cannot find file: ", expectFile, ". You should run rs_initialize_graphs.R for this pipeline.")
     return(NULL)
   }
+}
+
+nf.bycomm <- function(atlas, membership, fname, nodestat=NULL, toplot=NULL, bycomm=FALSE, outputdir=getwd()) {
+  if (is.null(toplot)) { toplot <- atlas$name } #all nodes
+  if (inherits(x=membership, what="communities")) {
+    membership <- membership$membership #igraph communities object membership is a vector inside the object
+  }
+  df <- atlas
+  df$membership <- membership
+  df <- subset(df, name %in% toplot)
+  if (is.null(nodestat)) { df$nodestat <- 1 } #replicate a dummy column
+  
+  df <- df[,c("x.mni", "y.mni", "z.mni", "membership", "nodestat", "name")]
+  if (bycomm) {
+    df <- split(df, df$membership)
+    lapply(df, function(thiscomm) {
+      fn <- sub(".node.txt", paste0("_comm", thiscomm$membership[1], ".node.txt"), fname, fixed=TRUE)  
+      write.table(file=file.path(outputdir, fn), thiscomm, row.names=FALSE, col.names=FALSE)
+    })
+  } else {
+    write.table(file=file.path(outputdir, fname), df, row.names=FALSE, col.names=FALSE)
+  }
+  return(invisible(NULL))
 }

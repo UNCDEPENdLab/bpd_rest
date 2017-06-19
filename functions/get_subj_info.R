@@ -1,4 +1,4 @@
-get_subj_info <- function(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".txt.gz") {
+get_subj_info <- function(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".txt.gz", fd.scrub = TRUE) {
   ################################################################################
   #################read in demographic info and combine with proper files in correct directory
   SPECC_rest <- read.csv(file.path(basedir, "data", "SPECC_Participant_Info.csv"), header = TRUE, stringsAsFactors = FALSE)
@@ -34,8 +34,10 @@ get_subj_info <- function(adjmats_base, parcellation, conn_method, preproc_pipel
   #NOTE: dir command leads to ICS directory, which needs to be mounted on your computer
   
   #scrub subjects with lot's of movement:
-  SPECC_rest_scrub <- filter_movement(SPECC_rest, "/mnt/ics", 0.5, .20, 10)
-  row.names(SPECC_rest_scrub) <- seq(1, length(SPECC_rest_scrub[,1]), 1)
+  if(fd.scrub == TRUE){
+  SPECC_rest <- filter_movement(SPECC_rest, "/mnt/ics", 0.5, .20, 10)
+  row.names(SPECC_rest) <- seq(1, length(SPECC_rest[,1]), 1)
+  }
   
-  return(SPECC_rest_scrub)
+  return(SPECC_rest)
 }
