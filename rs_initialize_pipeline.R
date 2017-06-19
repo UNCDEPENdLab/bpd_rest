@@ -4,18 +4,12 @@
 setwd("/Users/michael/Data_Analysis/bpd_rest")
 basedir <- getwd()
 
-source("functions/setup_globals.R") #this will setup details of the parcellation, conn_method, preproc_pipeline, and connection distance
-source("functions/get_subj_info.R")
-source("functions/calcGraph_binary.R")
-source("functions/import_adj_mats.R")
-source("functions/setup_graphs.R")
-source("functions/setup_community.R")
-source("functions/graph_util_redux.R")
-source("functions/run_parse_deltacon.R")
-source("functions/wibw_module_degree.R")
+#this will setup details of the parcellation, conn_method, preproc_pipeline, and connection distance
+#it also sources all helper functions for additional analysis
+source("functions/setup_globals.R") 
 
 #get_subj info here
-subj_info <- get_subj_info(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".txt.gz")
+subj_info <- get_subj_info(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".txt.gz", fd.scrub=TRUE)
 
 #import raw adjacency matrices here (subj_info already contains the identified raw files)
 allmats <- import_adj_mats(subj_info, rmShort = rmShort, allowCache=TRUE)
@@ -29,7 +23,7 @@ allg <- gobjs$allg; allg_noneg <- gobjs$allg_noneg; allg_density <- gobjs$allg_d
 
 rm(gobjs) #remove from environment to save memory
 
-#estimate and setup community structure
+#estimate and setup community structure (most work on exploring this has moved to determine_communities.R)
 comm_weighted_louvain <- run_community_detection_on_agg(allmats, "louvain")
 comm_weighted_greedy <- run_community_detection_on_agg(allmats, "fast_greedy")
 comm_d15 <- run_community_detection_on_agg(allmats, "louvain", density=0.15)

@@ -14,7 +14,7 @@ import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL) {
 
     ##preallocate empty array to read adjacency matrices into
     allmats <- array(NA, c(nrow(subj_info), nnodes, nnodes), 
-                     dimnames=list(id = subj_info$SPECC_ID, roi1=paste0("V", 1:nnodes), roi2=paste0("V", 1:nnodes)))
+                     dimnames=list(id = subj_info$SPECC_ID, roi1=atlas$name, roi2=atlas$name))
     
     sep=ifelse(conn_method=="scotmi", ",", "") #for use in read.table command
 

@@ -65,3 +65,7 @@ Nate/.Rapp.history
 #big files in here: don't commit
 adjmats
 cache
+
+#R.matlab junk
+MatlabServer.m
+InputStreamByteWrapper.class

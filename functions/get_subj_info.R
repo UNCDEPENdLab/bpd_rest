@@ -1,4 +1,4 @@
-get_subj_info <- function(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".txt.gz") {
+get_subj_info <- function(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".txt.gz", fd.scrub = TRUE) {
   ################################################################################
   #################read in demographic info and combine with proper files in correct directory
   SPECC_rest <- read.csv(file.path(basedir, "data", "SPECC_Participant_Info.csv"), header = TRUE, stringsAsFactors = FALSE)
@@ -25,23 +25,15 @@ get_subj_info <- function(adjmats_base, parcellation, conn_method, preproc_pipel
       stop("Cannot find expected adjacency matrix: ", fname) 
     } else {
       SPECC_rest$file[i] <- fname
-    }
-    
+    }    
   }
-  # ################################################################################
-  # ####Framewise displacement
-  # #####filter subjects with over .20 brain volumes displaced .5mm or more
-  # 
-  # ##In progress (make sure ics is mounted): get motion info (notes on how to implement this in RS notes folder in OneNote)
-  # ####this should include mean FD and max FD at the very least, standard script removes subjects with proportion of FD >.5mm of 20% or more 
-  # #####currently no safeguard against very large head movements
-  # 
-  # ##standard FD script
-  # SPECC_rest <- filter(SPECC_rest, pr_over5mm <= .15)
-  # # SPECC_rest <- filter(SPECC_rest, pr_over5mm <= .2)
-  # table(SPECC_rest[,c(3,5)])
-  # 
-  # describe(SPECC_rest[,c(1:6, 8)])
+  
+  #scrub subjects with lots of movement
+  if (fd.scrub == TRUE) {
+    if(!dir.exists("/mnt/ics/SPECC")) { message("ICS folder not mounted, unable to read FD.txt files") }
+    #NOTE: dir command leads to ICS directory, which needs to be mounted on your computer    
+    SPECC_rest <- filter_movement(SPECC_rest, "/mnt/ics", 0.5, .20, 10) #0.5mm FD threshold, 20% of volumes at that threshold, or any 10mm+ movement
+  }
   
   return(SPECC_rest)
 }

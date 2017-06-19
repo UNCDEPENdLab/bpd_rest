@@ -6,6 +6,8 @@ setup_graphs <- function(adjmatarray, allowCache=TRUE, ncpus=4) {
   suppressMessages(require(foreach))
   suppressMessages(require(doSNOW))
   
+  stopifnot(length(atlas$name) == dim(adjmatarray)[2]) #number of nodes must match between atlas and adjmats
+  
   #### Setup basic weighted graphs
   expectFile <- file.path(basedir, "cache", paste0("weightedgraphs_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
   if (file.exists(expectFile) && allowCache==TRUE) {
@@ -14,7 +16,7 @@ setup_graphs <- function(adjmatarray, allowCache=TRUE, ncpus=4) {
   } else {
     allg <- apply(adjmatarray, 1, function(sub) {
       g <- graph.adjacency(sub, mode="undirected", weighted=TRUE, diag=FALSE)
-      V(g)$name <- paste0("V", 1:nrow(sub))
+      V(g)$name <- atlas$name
       g <- tagGraph(g, atlas) #populate all attributes from atlas to vertices
       return(g)
     })
