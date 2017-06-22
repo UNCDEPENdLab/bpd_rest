@@ -76,8 +76,9 @@ NodeFile <- function(atlas, community = NULL, nodestp = NULL, nodevals = NULL, n
   #nodestp provides vector of node numbers that need to be plotted
   #community can be set to community membership, whether higher in BPD/ controls, or anything else  
   #labels set equal to either 1 (full anatomical label) or 2 (node number [i.e. V_1...])
-  
+  # browser()
   nf <- atlas
+  
   #if want to read in a csv rather than a predfined atlas in R
   #nf <- read.csv(atlas, header = TRUE)        #####csv file should have at least mni attributes and anatomical labels
   vnames <- data.frame(atlas[,"name"])
@@ -94,7 +95,7 @@ NodeFile <- function(atlas, community = NULL, nodestp = NULL, nodevals = NULL, n
     names(commvals) <- vnames$vname
   }
   
-   # browser()
+   
   if(!is.null(nodestp)) {
     nf <- nf[which(nf$name %in% nodestp),]
     commvals <- commvals[which(names(commvals) %in% nodestp)]

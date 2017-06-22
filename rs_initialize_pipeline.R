@@ -36,7 +36,7 @@ rm(gobjs) #remove from environment to save memory
 
 #estimate and setup community structure. note: currently pulling from MH's community structure, unclear how this was generated
 # comm_d10_l <- run_community_detection_on_agg(allmats, "louvain", density=0.1)
-community <- readRDS(paste0(getwd(), "/cache/d10_louv_MH.rds"))
+community <- readRDS(paste0(getwd(), "/cache/d12_louv_n83.rds"))
 
 allg_noneg <- assign_communities(allg_noneg, community, "community")
 allg_density <- assign_communities(allg_density, community, "community")
@@ -52,7 +52,7 @@ sig_PCA_nodes <- analyze_nodal_metrics_PCA(nodalmetrics_dthresh$allmetrics.nodal
 
 ##insert weighted and binary comparisons here
 
-
+metrics.pca <- c("central", "within.mod", "between.node")
 
 ###STOPPED HERE: IN PROGRESS
 

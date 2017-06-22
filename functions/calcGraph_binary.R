@@ -1,5 +1,5 @@
 ####worker bee function which compiles nodal graph metrics including nodal metrics with reference to a $community attribute of the graph 
-calcGraph_binary_nodal <- function(origgraph, community_attr="wcomm_louvain") {
+calcGraph_binary_nodal <- function(origgraph, community_attr="community") {
   #edgelist <- data.frame(get.edgelist(origgraph)) #not used currently
   allmetrics <- list()
 
@@ -29,7 +29,7 @@ calcGraph_binary_nodal <- function(origgraph, community_attr="wcomm_louvain") {
   return(allmetrics)
 }
 
-compute_nodal_metrics <- function(allg_density, ncpus=4, allowCache=TRUE, community_attr="wcomm_louvain") {
+compute_nodal_metrics <- function(allg_density, ncpus=4, allowCache=TRUE, community_attr="community") {
   require(foreach)
   require(doSNOW)
   
@@ -75,7 +75,7 @@ compute_nodal_metrics <- function(allg_density, ncpus=4, allowCache=TRUE, commun
 }
 
 ####worker bee function which compiles global graph theoretical metrics
-calcGraph_binary_global <- function(origgraph, community_attr="wcomm_louvain") {
+calcGraph_binary_global <- function(origgraph, community_attr="community") {
   #edgelist <- data.frame(get.edgelist(origgraph)) #not used currently
   globmetrics <- list()
 
@@ -92,7 +92,7 @@ calcGraph_binary_global <- function(origgraph, community_attr="wcomm_louvain") {
 }
 
 
-compute_global_metrics <- function(allg_density, ncpus=4, allowCache=TRUE, community_attr="wcomm_louvain") {
+compute_global_metrics <- function(allg_density, ncpus=4, allowCache=TRUE, community_attr="community") {
   require(foreach)
   require(doSNOW)
   
