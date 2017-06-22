@@ -9,7 +9,7 @@ basedir <- getwd()
 source("functions/setup_globals.R") 
 
 #get_subj info here
-subj_info <- get_subj_info(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".txt.gz", fd.scrub=TRUE)
+subj_info <- get_subj_info(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".txt.gz", fd.scrub=TRUE, allowCache=TRUE)
 
 #import raw adjacency matrices here (subj_info already contains the identified raw files)
 allmats <- import_adj_mats(subj_info, rmShort = rmShort, allowCache=TRUE)
@@ -24,29 +24,32 @@ allg <- gobjs$allg; allg_noneg <- gobjs$allg_noneg; allg_density <- gobjs$allg_d
 rm(gobjs) #remove from environment to save memory
 
 #estimate and setup community structure (most work on exploring this has moved to determine_communities.R)
-comm_weighted_louvain <- run_community_detection_on_agg(allmats, "louvain")
-comm_weighted_greedy <- run_community_detection_on_agg(allmats, "fast_greedy")
-comm_d15 <- run_community_detection_on_agg(allmats, "louvain", density=0.15)
-comm_d20 <- run_community_detection_on_agg(allmats, "louvain", density=0.20)
-compare(comm_weighted_louvain, comm_d15, method="nmi")
-compare(comm_weighted_louvain, comm_d20, method="nmi")
-compare(comm_weighted_louvain, comm_weighted_greedy, method="nmi")
-comm_infomap_d10 <- run_community_detection_on_agg(allmats, "infomap", density=0.10)
-comm_infomap_weighted <- run_community_detection_on_agg(allmats, "infomap", hierarchical=FALSE, verbose=FALSE)
+# comm_weighted_louvain <- run_community_detection_on_agg(allmats, "louvain")
+# comm_weighted_greedy <- run_community_detection_on_agg(allmats, "fast_greedy")
+# comm_d15 <- run_community_detection_on_agg(allmats, "louvain", density=0.15)
+# comm_d20 <- run_community_detection_on_agg(allmats, "louvain", density=0.20)
+# compare(comm_weighted_louvain, comm_d15, method="nmi")
+# compare(comm_weighted_louvain, comm_d20, method="nmi")
+# compare(comm_weighted_louvain, comm_weighted_greedy, method="nmi")
+# comm_infomap_d10 <- run_community_detection_on_agg(allmats, "infomap", density=0.10)
+# comm_infomap_weighted <- run_community_detection_on_agg(allmats, "infomap", hierarchical=FALSE, verbose=FALSE)
+community <- readRDS(paste0(getwd(), "/cache/d12_louv_n83.rds"))
+
+allg_noneg <- assign_communities(allg_noneg, community, "community")
+allg_density <- assign_communities(allg_density, community, "community")
 
 #assign weighted louvain into weighted and density-thresholded structures in attribute "wcomm_louvain"
-allg_noneg <- assign_communities(allg_noneg, comm_weighted_louvain, "wcomm_louvain")
-allg_density <- assign_communities(allg_density, comm_weighted_louvain, "wcomm_louvain")
+#allg_noneg <- assign_communities(allg_noneg, comm_weighted_louvain, "wcomm_louvain")
+#allg_density <- assign_communities(allg_density, comm_weighted_louvain, "wcomm_louvain")
 
 #compute global metrics on density-thresholded graphs
-globalmetrics_dthresh <- compute_global_metrics(allg_density, allowCache=TRUE, community_attr="wcomm_louvain") #community_attr determines how global/nodal statistics that include community are computed
+globalmetrics_dthresh <- compute_global_metrics(allg_density, allowCache=TRUE, community_attr="community") #community_attr determines how global/nodal statistics that include community are computed
 
 #compute nodal metrics on density-thresholded graphs
-nodalmetrics_dthresh <- compute_nodal_metrics(allg_density, allowCache=TRUE, community_attr="wcomm_louvain") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
+nodalmetrics_dthresh <- compute_nodal_metrics(allg_density, allowCache=TRUE, community_attr="community") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
 
-
-
-
+##calculate group comparisons (PCA pipeline)
+sig_PCA_nodes <- analyze_nodal_metrics_PCA(nodalmetrics_dthresh$allmetrics.nodal.df, allowCache = FALSE)
 
 
 ###STOPPED HERE: IN PROGRESS
