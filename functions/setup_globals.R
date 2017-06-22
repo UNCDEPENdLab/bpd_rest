@@ -15,6 +15,7 @@ source("functions/setup_community.R")
 source("functions/graph_util_redux.R")
 source("functions/run_parse_deltacon.R")
 source("functions/wibw_module_degree.R")
+source("functions/analyze_nodal_metrics_PCA_func.R")
 source("Infomap/run_infomap.R")
 
 nnodes <- 269  #varying this will require you to change the .txt coordinate file you read in for roiMat (should be 4 X nnodes txt file labelled:"x", "y", "z", "roi") and the masterlookup atlas

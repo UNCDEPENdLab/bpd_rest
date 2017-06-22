@@ -74,7 +74,7 @@ analyze_nodal_metrics_PCA <- function(nodalmetrics_dthresh_df = NULL, allowCache
       merge.bpdage <- subj_info %>% dplyr::select(SPECC_ID, BPD, AgeAtScan) %>% dplyr::rename(id=SPECC_ID, Age=AgeAtScan)
       
       toanalyze <- dplyr::left_join(toanalyze, merge.bpdage, by = "id")
-      write.csv(toanalyze, file = paste0(basedir, "/cache/toanalyze.pca.",preproc_pipeline, ".", conn_method, ".csv"))
+      write.csv(toanalyze, file = paste0(basedir, "/cache/toanalyze.pca.",preproc_pipeline, ".", conn_method, ".csv"), row.names = FALSE)
       
       ##################################################################################################
       ##############
@@ -143,13 +143,13 @@ analyze_nodal_metrics_PCA <- function(nodalmetrics_dthresh_df = NULL, allowCache
                                community.name=mapvalues(community$membership, from = c("1","2","3","4","5"), to = c("SOMMOTOR", "FPN/DA", "OCC", "CO", "DMN")),
                                stringsAsFactors = FALSE)
 
-      all.siglm.nodal.pca <- dplyr::left_join(results.lm, membership, by = "nodenum")
-      all.sigwlelm.nodal.pca <- dplyr::left_join(results.wle.lm, membership, by = "nodenum")
-      all.sigttest.nodal.pca <- dplyr::left_join(results.ttestbpd, membership, by = "nodenum")
+      all.siglm.nodal.pca <- dplyr::left_join(results.lm, membership, by = "nodenum") %>% arrange(term, metric, nodenum)
+      all.sigwlelm.nodal.pca <- dplyr::left_join(results.wle.lm, membership, by = "nodenum") %>% arrange(term, metric, nodenum)
+      all.sigttest.nodal.pca <- dplyr::left_join(results.ttestbpd, membership, by = "nodenum") %>% arrange(metric, nodenum)
       
-      write.csv(all.sigwlelm.nodal.pca, file = paste0(basedir, "/output.files/all.sigwlelm.nodal.pca.", preproc_pipeline, ".", conn_method, ".csv"))
-      write.csv(all.siglm.nodal.pca, file = paste0(basedir, "/output.files/all.siglm.nodal.pca.", preproc_pipeline, ".", conn_method, ".csv"))
-      write.csv(all.sigttest.nodal.pca, file = paste0(basedir, "/output.files/all.sigttest.nodal.pca.", preproc_pipeline, ".", conn_method, ".csv"))
+      write.csv(all.sigwlelm.nodal.pca, file = paste0(basedir, "/output.files/all.sigwlelm.nodal.pca.", preproc_pipeline, ".", conn_method, ".csv"), row.names=FALSE)
+      write.csv(all.siglm.nodal.pca, file = paste0(basedir, "/output.files/all.siglm.nodal.pca.", preproc_pipeline, ".", conn_method, ".csv"), row.names=FALSE)
+      write.csv(all.sigttest.nodal.pca, file = paste0(basedir, "/output.files/all.sigttest.nodal.pca.", preproc_pipeline, ".", conn_method, ".csv"), row.names=FALSE)
     }
   }
   

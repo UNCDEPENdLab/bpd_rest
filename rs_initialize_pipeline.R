@@ -49,7 +49,7 @@ globalmetrics_dthresh <- compute_global_metrics(allg_density, allowCache=TRUE, c
 nodalmetrics_dthresh <- compute_nodal_metrics(allg_density, allowCache=TRUE, community_attr="community") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
 
 ##calculate group comparisons (PCA pipeline)
-sig_PCA_nodes <- analyze_nodal_metrics_PCA(nodalmetrics_dthresh$allmetrics.nodal.df, allowCache = FALSE)
+sig_PCA_nodes <- analyze_nodal_metrics_PCA(nodalmetrics_dthresh$allmetrics.nodal.df, allowCache = TRUE)
 
 
 ###STOPPED HERE: IN PROGRESS
