@@ -72,6 +72,7 @@ data
 output.files
 old
 Viz_files
+nate_infomap_coords
 
 #R.matlab junk
 MatlabServer.m
