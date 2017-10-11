@@ -65,6 +65,13 @@ Nate/.Rapp.history
 #big files in here: don't commit
 adjmats
 cache
+figures
+BNV_nodefiles
+abstracts
+data
+output.files
+old
+Viz_files
 
 #R.matlab junk
 MatlabServer.m

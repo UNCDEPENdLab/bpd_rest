@@ -23,7 +23,7 @@ calcGraph_binary_nodal <- function(origgraph, community_attr="community") {
     allmetrics[["between.module.deg.zscore"]] <- wibw$z_between
     allmetrics[["part.coeff"]] <- part_coeff(origgraph, allmetrics$community.membership)#, use.parallel = FALSE)
     allmetrics[["gateway.coeff.btw"]] <- gateway_coeff(origgraph, allmetrics$community.membership, centr = "btwn.cent")
-    allmetrics[["gateway.coeff.deg"]] <- gateway_coeff(origgraph, allmetrics$community.membership, centr = "degree")    
+    allmetrics[["gateway.coeff.degree"]] <- gateway_coeff(origgraph, allmetrics$community.membership, centr = "degree")    
   }
 
   return(allmetrics)

@@ -1,9 +1,10 @@
-#use caching
-import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL) {
+import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL, densities_desired = NULL) {
   #NB. several variables are (implicitly) pulled from the global environment here:
   #   nnodes, parcellation, conn_method, basedir
-  #Whether this is optimal programming is open to debate
+  
+  if(is.null(densities_desired)){densities_desired <- seq(.05,.25,.01)} #create densities desired list if nothing is passed in
 
+  # browser()
   stopifnot(file.exists(file.path(basedir, "cache")))
   expectFile <- file.path(basedir, "cache", paste0("adjmats_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
   if (file.exists(expectFile) && allowCache==TRUE) {
@@ -12,6 +13,26 @@ import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL) {
   } else {
     #either the cached file doesn't exist, or we've been asked not to accept it (allowCache=FALSE)
 
+    #######################################################
+    #In progress: adapt script for dens.clime to export a list with subjs as elements containing densityxnodexnode 3d arrays
+    if(conn_method == "dens.clime_partial"){
+      allmats <- get(load("adjmats/schaefer422_aroma_dens.clime_partial/dens.clime.all.RData"))
+      names(allmats) <- toupper(sub("_.*", "", names(allmats)))
+      allmats <- allmats[names(allmats) %in% subj_info$Luna_ID | names(allmats) %in% subj_info$SPECC_ID]
+    
+      allmats.list <- list()
+      
+      for (subj in 1:nrow(subj_info)){
+        thrdim_allmats <- array(NA, c(length(densities_desired), nnodes, nnodes),
+                                dimnames=list(den = densities_desired, roi1=atlas$name, roi2=atlas$name))
+        for (den in 1:length(densities_desired)){
+          
+          thrdim_allmats[den,,] <- allmats[[subj]][[den]]
+          }
+        allmats.list[[subj]] <- thrdim_allmats
+      }
+      
+    } else {
     ##preallocate empty array to read adjacency matrices into
     allmats <- array(NA, c(nrow(subj_info), nnodes, nnodes), 
                      dimnames=list(id = subj_info$SPECC_ID, roi1=atlas$name, roi2=atlas$name))
@@ -25,6 +46,7 @@ import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL) {
         m[upper.tri(m)] <- t(m)[upper.tri(m)] #populate upper triangle for symmetry
       }
       allmats[f,,] <- m
+      }
     }
     
     #remove short distance connections using 0/1 matrix passed in
@@ -50,9 +72,14 @@ import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL) {
       #basic apply over rows, apply(allmats, 1), throws away array dimensions and dimnames
     }
     
-    save(allmats, file=expectFile) #cache results
   }
   
+  if(!is.null(allmats.list)){
+    save(allmats.list, file = expectFile)
+  } else {save(allmats, file=expectFile) }#cache results
+  
   #return 3d array to caller
-  return(allmats)
-}
+  if(!is.null(allmats.list)){
+    return(allmats.list)
+  } else{return(allmats)}
+  }

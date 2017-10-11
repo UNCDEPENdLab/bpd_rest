@@ -1,13 +1,9 @@
-run_community_detection_on_agg <- function(allmats, algorithm="louvain", density=NULL, aggfun=mean, ...) {
+run_community_detection_on_agg <- function(allmats, agg.g, algorithm="louvain", density=NULL,  ...) {
   #Run community detection on mean graph (across all subjects in 3d array passed in)
   #allmats_log <- apply(allmats, c(1,2,3), function(x) { log(x+.05)})
   #NB. If no density threshold is applied, cluster_* runs weighted community detection
   #The weights should scaled such that higher values represent stronger ties. This is opposite of
   #betweenness, where inverse weights are used to denote distance.  
-  
-  agg.adjmat <- apply(allmats, c(2,3), aggfun, na.rm = TRUE)
-  agg.g <- graph.adjacency(agg.adjmat, mode = "lower", weighted = TRUE, diag = FALSE)
-  agg.g <- delete.edges(agg.g, which(E(agg.g)$weight < 0)) #remove negative weights
   
   if (!is.null(density)) { agg.g <- density_threshold(agg.g, density) }
  
@@ -22,6 +18,7 @@ run_community_detection_on_agg <- function(allmats, algorithm="louvain", density
   return(comm)
   
 }
+
 
 assign_communities <- function(allg, comm, attribute="community") {
   stopifnot(is.list(allg))
@@ -44,6 +41,18 @@ assign_communities <- function(allg, comm, attribute="community") {
   }
 } 
 
+yeo7_community <- function(agg.g){
+  #stopifnot(is.list(allg)), if interested we can input a list of single subject matrices 
+  membership.file <- file.path(getwd(), "data", "membership.yeo.csv")
+  stopifnot(file.exists(membership.file))
+  membership.yeo <- as.numeric(as.matrix(read.csv(membership.file)))
+  names(membership.yeo) <- paste0("V", seq(1,422,1))
+  
+  
+  yeo7_community <- make_clusters(agg.g, membership = membership.yeo, algorithm = "Yeo_etal_2011_7Networks")
+  
+  return(yeo7_community)
+}
 
 # hist(E(mean.g)$weight)
 # E(mean.g)
