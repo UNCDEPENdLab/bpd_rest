@@ -1,46 +1,46 @@
 ###################################################################################
 ##Graph Utility Functions: NodeFile(), tagGraph(), plotMetricQuant(), filter_movement()
 ##MotionInfoSPEC: function pulls motion info from specified dir and exports a list containing: 
-#directories not found, fd.txt files not found, raw FD data, and a table with relevant FD information based on specifications 
-filter_movement <- function(subj_info, dir, thresh, spikes.exclude, max.exclude){
+
+#directories not found, fd.txt files not found, raw FD data, and a table with relevant FD information based on specifications
+
+filter_movement <- function(subj_info, dir, thresh=0.5, spikes.exclude=0.2, max.exclude=10) {
   ##thresh indicates what specifies a significant head movement (in mm)
   ##spikes.exclude specifies the cutoff for the proportion of movements above the threshold at which to exclude a given subject
   ##max.exclude is similar to spikes.exclude, but sets a cutoff for any large head movements above a set point
+  # browser()
   require(plyr); require(dplyr); require(tidyr)
   options(dplyr.width=200)
   return_list <- list()
-  idfile <- paste0(dir, "/SPECC/SPECC_Participant_Info.csv")
-  idinfo <- read.csv(idfile)
-  ## MH has now converted all SPECC MR directory names to all lower case to allow for match on case-sensitive filesystem
-  ## and to make the naming consistent
+  
+  ## MH has now converted all SPECC MR directory names to all lower case to allow for match on case-sensitive filesystem and to make the naming consistent
   
   ##pull subject folders
-  idinfo <- idinfo %>% select(-Notes) %>% rowwise() %>% mutate(mr_dir=ifelse(LunaMRI==1,
-                                                                             paste0(dir, "/MMClock/MR_Proc/", Luna_ID, "_", format((as.Date(ScanDate, format="%Y-%m-%d")), "%Y%m%d")), #convert to Date, then reformat YYYYMMDD
-                                                                             paste0(dir, "/SPECC/MR_Proc/", tolower(SPECC_ID), "_", tolower(format((as.Date(ScanDate, format="%Y-%m-%d")), "%d%b%Y")))))
+  subj_info <- subj_info %>% select(-Notes) %>% rowwise() %>% mutate(mr_dir=ifelse(LunaMRI==1,
+          paste0(dir, "/MMClock/MR_Proc/", Luna_ID, "_", format((as.Date(ScanDate, format="%Y-%m-%d")), "%Y%m%d")), #convert to Date, then reformat YYYYMMDD
+          paste0(dir, "/SPECC/MR_Proc/", tolower(SPECC_ID), "_", tolower(format((as.Date(ScanDate, format="%Y-%m-%d")), "%d%b%Y")))))
+  
   ##pull fd info into dataframe
   fd.info.raw <- data.frame()
   fd.info <- data.frame()
   fd.notfound <- data.frame()
-  for(id in idinfo$NUM_ID){
-    thissub <- idinfo[which(idinfo$NUM_ID == id),]
-    if(file.exists(paste0(thissub$mr_dir, "/mni_5mm_", preproc_pipeline,"/rest1/motion_info/fd.txt"))){
-      #this.sub.fd <- t(data.frame(read.table(paste0(thissub$mr_dir, "/mni_5mm_wavelet/rest1/motion_info/fd.txt"))))
-      #rownames(this.sub.fd) <- as.character(thissub$SPECC_ID)
-      this.sub.fd <- data.frame(as.character(thissub$SPECC_ID), read.table(paste0(thissub$mr_dir, "/mni_5mm_", preproc_pipeline, "/rest1/motion_info/fd.txt")))
-      colnames(this.sub.fd) <- c("Subj", "FD")
-      # browser()
-      
+
+  for(r in 1:nrow(subj_info)) {
+    thissub <- subj_info[r,]
+    if(file.exists(paste0(thissub$mr_dir, "/mni_nosmooth_", preproc_pipeline,"/rest1/motion_info/fd.txt"))){
+      this.sub.fd <- data.frame(Subj=as.character(thissub$SPECC_ID), FD=read.table(paste0(thissub$mr_dir, "/mni_nosmooth_", preproc_pipeline, "/rest1/motion_info/fd.txt"))$V1)
+
       meanFD = mean(this.sub.fd$FD)
       maxFD = max(this.sub.fd$FD)
-      maxExclude = if(maxFD > max.exclude) 1 else 0
+      max.exclude.this = if (maxFD > max.exclude) 1 else 0
       prop.thresh = sum(this.sub.fd$FD > thresh)/length(this.sub.fd$FD)
-      thresh.exclude = if(prop.thresh > spikes.exclude) 1 else 0
+      thresh.exclude.this = if (prop.thresh > spikes.exclude) 1 else 0
       num_volumes = length(this.sub.fd$FD)
       
-      thissub.desc <- data.frame(Subj = as.character(thissub$SPECC_ID),meanFD, maxFD, maxExclude, prop.thresh, thresh.exclude, num_volumes)
-                          
-      if(!(num_volumes==300)){cat("Subject ", as.character(thissub$SPECC_ID), " does not have the standard number of volumes", "\n")}
+
+      thissub.desc <- data.frame(Subj = as.character(thissub$SPECC_ID), meanFD, maxFD, max.exclude.this, prop.thresh, thresh.exclude.this, num_volumes, stringsAsFactors=FALSE)
+      
+      if(!(num_volumes==300)) { cat("Subject ", as.character(thissub$SPECC_ID), " does not have the standard number of volumes", "\n") }
       ##subjects 003 and 008 have been taken care of 6/14/17 - NH
       
       fd.info <- rbind(fd.info, thissub.desc)
@@ -50,21 +50,20 @@ filter_movement <- function(subj_info, dir, thresh, spikes.exclude, max.exclude)
       cat("FD.txt file not found for subject: ", as.character(thissub$SPECC_ID), "\n")
     }
   }
-  #verify that mr_dir is present as expected, if not, store in dir.notfound
-  idinfo$dirfound <- file.exists(idinfo$mr_dir)
-  dir.notfound <- subset(idinfo, dirfound==FALSE)
-  cat("MR_dir not found:", as.character(dir.notfound$SPECC_ID))
   
-  # return_list[["dir.notfound"]] <- data.frame(dir.notfound)
-  # return_list[["fd.txt.notfound"]] <- fd.notfound
-  # return_list[["fd.info.raw"]] <- fd.info.raw
-  # return_list[["fd.info"]] <- fd.info
-  # 
-  fd.exclude <- fd.info[,c("Subj", "maxExclude", "thresh.exclude")]
-  colnames(fd.exclude) <- c("SPECC_ID", "maxExclude", "thresh.exclude")
-   
+  #verify that mr_dir is present as expected, if not, store in dir.notfound
+  subj_info$dirfound <- file.exists(subj_info$mr_dir)
+  if (!all(subj_info$dirfound)) {
+    dir.notfound <- subset(subj_info, dirfound==FALSE)
+    cat("MR_dir not found for the following subjects:\n\n")
+    print(dir.notfound)
+  }
+  
+  fd.exclude <- fd.info[,c("Subj", "max.exclude.this", "thresh.exclude.this")]
+  colnames(fd.exclude) <- c("SPECC_ID", "fd.max.exclude", "fd.thresh.exclude")
+
   subj_info_exclude <- inner_join(subj_info, fd.exclude, by = "SPECC_ID")
-  subj_info_exclude <- subj_info_exclude[which(subj_info_exclude$maxExclude == 0 & subj_info_exclude$thresh.exclude ==0),]
+  subj_info_exclude <- filter(subj_info_exclude, fd.max.exclude == 0 & fd.thresh.exclude == 0)
 
   return(subj_info_exclude)
 }
@@ -86,7 +85,7 @@ NodeFile <- function(atlas, community = NULL, nodestp = NULL, nodevals = NULL, n
   stopifnot(all(c("x.mni", "y.mni", "z.mni", "anat_label") %in% names(nf)))
   # row.names(nf) <- c(seq(1, 248, 1), seq(251, 271, 1))
   row.names(nf) <- sort(as.numeric(gsub("V", "", vnames[,1])))
- 
+
   if(!is.null(community)){
     commvals <- community
     names(commvals) <- vnames$vname
@@ -95,7 +94,7 @@ NodeFile <- function(atlas, community = NULL, nodestp = NULL, nodevals = NULL, n
     names(commvals) <- vnames$vname
   }
   
-   
+  
   if(!is.null(nodestp)) {
     nf <- nf[which(nf$name %in% nodestp),]
     commvals <- commvals[which(names(commvals) %in% nodestp)]
@@ -108,11 +107,11 @@ NodeFile <- function(atlas, community = NULL, nodestp = NULL, nodevals = NULL, n
     } else {
       nodevals <- nodevals[which(names(nodevals) %in% nodestp)]
     }
-  } else {
+  } else  {
     if(is.null(nodevals)){
       nodevals <- rep(1, nnodes)
     } else {
-      nodevals <- nodevals[which(names(nodevals) %in% nodestp)]
+      nodevals <- nodevals
     }
   }
   
@@ -121,15 +120,13 @@ NodeFile <- function(atlas, community = NULL, nodestp = NULL, nodevals = NULL, n
     node_label <- subset(nf, select = anat_label) 
   } else if(labels == 0) {node_label <- paste0("V", row.names(nf))}
   
-  # browser()
   nf.exp <- cbind(mni, commvals, nodevals, node_label)
   
   write.table(nf.exp, file = file.path(outputdir, paste0(filename, ".node.txt")), row.names = FALSE, col.names = FALSE)
   return(nf.exp)
-  
 }
 
-
+#/Users/nth7/Box Sync/DEPENd/Projects/RS_BPD_graph/bpd_rest/BNV_nodefiles/in_consideration
 
 #######################################################################################################################
 ##tagGraph: tags igraph object with mni coordinates, brodmanns areas
@@ -186,11 +183,11 @@ tagGraph <- function(gobj, atlas, nodefile) {
 
 #######################################################################################################################
 ##plotMetricQuant:  gives high nodal metric values to specifications for export
-   
-plotMetricQuant <- function(obj, q, metric, atlas) {
- 
-    v <- obj[[metric]]
 
+plotMetricQuant <- function(obj, q, metric, atlas) {
+  
+  v <- obj[[metric]]
+  
   quant.val <- quantile(v, probs = q)
   high.val <- v[v >= quant.val]
   names(high.val) <- as.numeric(substring(names(high.val), 2, nchar(names(high.val))))
@@ -231,7 +228,24 @@ load_nodal_metrics_df <- function() {
   }
 }
 
-nf.bycomm <- function(atlas, membership, fname, nodestat=NULL, toplot=NULL, bycomm=FALSE, outputdir=getwd()) {
+
+#small helper function to just load the nodal metrics data.frame (see compute_nodal_metrics for code that creates this structure)
+load_allmats <- function() {
+  expectFile <- file.path(basedir, "cache", paste0("adjmats_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
+  if (file.exists(expectFile)) {
+    message("Loading raw adjacency matrices from file: ", expectFile)
+    load(expectFile)
+    return(allmats)
+  } else {
+    warning("Cannot find file: ", expectFile, ". You should run rs_initialize_graphs.R for this pipeline.")
+    return(NULL)
+  }
+}
+
+nf <- function(atlas, membership, fname, nodestat=NULL, toplot=NULL, bycomm=FALSE, outputdir=getwd(), savebnv=FALSE, 
+    bnvconfig=file.path(basedir, "BNV_nodefiles", "bnv_config.mat"),
+    matlab="/Applications/MATLAB_R2016a.app/bin/matlab"){
+
   if (is.null(toplot)) { toplot <- atlas$name } #all nodes
   if (inherits(x=membership, what="communities")) {
     membership <- membership$membership #igraph communities object membership is a vector inside the object
@@ -242,14 +256,44 @@ nf.bycomm <- function(atlas, membership, fname, nodestat=NULL, toplot=NULL, byco
   if (is.null(nodestat)) { df$nodestat <- 1 } #replicate a dummy column
   
   df <- df[,c("x.mni", "y.mni", "z.mni", "membership", "nodestat", "name")]
+
+  outfiles <- c()
   if (bycomm) {
     df <- split(df, df$membership)
-    lapply(df, function(thiscomm) {
-      fn <- sub(".node.txt", paste0("_comm", thiscomm$membership[1], ".node.txt"), fname, fixed=TRUE)  
-      write.table(file=file.path(outputdir, fn), thiscomm, row.names=FALSE, col.names=FALSE)
-    })
+    outfiles <- sapply(df, function(thiscomm) {
+          fn <- file.path(outputdir, sub("\\.node(\\.txt)*", paste0("_comm", thiscomm$membership[1], ".node\\1"), fname, perl=TRUE))  
+          write.table(file=fn, thiscomm, row.names=FALSE, col.names=FALSE)
+          return(fn)
+        })
   } else {
-    write.table(file=file.path(outputdir, fname), df, row.names=FALSE, col.names=FALSE)
+    fn <- file.path(outputdir, fname)
+    write.table(file=, df, row.names=FALSE, col.names=FALSE)
+    outfiles <- fn
+  }
+  
+  if (savebnv) {
+    #options(matlab="/Applications/MATLAB_R2016a.app/bin/matlab")
+    #Matlab$startServer()
+    #matlab <- Matlab()
+    #isOpen <- open(matlab)
+    #if (!isOpen) { throw("MATLAB server is not running: waited 30 seconds.") }
+    
+    allbnv <- sapply(outfiles, function(of) {
+          bnvstring <- paste0("BrainNet_MapCfg('BrainMesh_ICBM152.nv',", #surface
+              "'", bnvconfig, "',", #configuration for bnv display
+              "'", of, "',", #node file
+              "'", sub("\\.node(\\.txt)*", ".jpg", of, perl=TRUE), "');") #jpg file
+          return(bnvstring)
+        })
+    allbnv <- paste(paste(allbnv, collapse=" "), "close all;", "exit;") #close all figures and exit after plotting
+    
+    #evaluate(matlab, bnvstring) #using R.matlab just stalls indefinitely here
+    
+    #cat("Calling BNV with string: ", allbnv, "\n")
+    system(paste0(matlab, " -nosplash -r \"", allbnv, "\""))
+    
+    #close(matlab)    
+
   }
   return(invisible(NULL))
 }

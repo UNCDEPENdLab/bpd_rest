@@ -1,4 +1,4 @@
-setup_graphs <- function(adjmatarray, allowCache=TRUE, ncpus=4) {
+setup_graphs <- function(adjmatarray, aggfun = NULL, agg.rm.neg = TRUE, allowCache=TRUE, ncpus=4) {
   #expects a subjects x ROIs x ROIs array
   #creates igraph objects from adjacency matrix and label nodes V1, V2,...
   #looks up atlas from global environment
@@ -6,15 +6,34 @@ setup_graphs <- function(adjmatarray, allowCache=TRUE, ncpus=4) {
   suppressMessages(require(foreach))
   suppressMessages(require(doSNOW))
   
+  stopifnot(length(atlas$name) == dim(adjmatarray)[2]) #number of nodes must match between atlas and adjmats
+  
+  
   #### Setup basic weighted graphs
   expectFile <- file.path(basedir, "cache", paste0("weightedgraphs_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
   if (file.exists(expectFile) && allowCache==TRUE) {
     message("Loading weighted graph objects from file: ", expectFile)
     load(expectFile)
   } else {
+    if(conn_method == "dens.clime_partial"){
+      allg <- lapply(adjmatarray, function(sub){
+        
+        g.list <- lapply(sub, function(den){
+        
+        g <- graph.adjacency(den, mode = "undirected", weighted = TRUE, diag = FALSE)  
+        V(g)$name <- atlas$name
+        
+        g <- tagGraph(g, atlas) #populate all attributes from atlas to vertices
+        return(g)
+        })
+        
+        return(g.list)
+      })
+    } else{
     allg <- apply(adjmatarray, 1, function(sub) {
       g <- graph.adjacency(sub, mode="undirected", weighted=TRUE, diag=FALSE)
-      V(g)$name <- c(paste0("V", 1:248),paste0("V", 251:271))
+      V(g)$name <- atlas$name
+
       g <- tagGraph(g, atlas) #populate all attributes from atlas to vertices
       return(g)
     })
@@ -22,6 +41,8 @@ setup_graphs <- function(adjmatarray, allowCache=TRUE, ncpus=4) {
     #add id to graphs
     for (i in 1:length(allg)) { allg[[i]]$id <- dimnames(adjmatarray)[["id"]][i] }
     save(file=expectFile, allg) #save cache
+    }
+    
   }
   
   #### Setup weighted graphs, removing negative edges
@@ -33,6 +54,17 @@ setup_graphs <- function(adjmatarray, allowCache=TRUE, ncpus=4) {
     ##remove negative correlations between nodes, if this is run on pearson, the number of edges remaining will be different across subjs 
     allg_noneg <- lapply(allg, function(g) { delete.edges(g, which(E(g)$weight < 0)) })
     save(file=expectFile, allg_noneg) #save cache
+  }
+  
+  # browser()
+  #### Generate aggregate graph, defaults to mean of all adjmats with neg weights removed
+  expectFile <- file.path(basedir, "cache", paste0("agg.g_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
+  if (file.exists(expectFile) && allowCache==TRUE) {
+    message("Loading aggregated graph (DEFAULT MEAN + NO NEG) from file: ", expectFile)
+    load(expectFile)
+  } else {
+    agg.g <- generate_agg.g(allmats, rm.neg = agg.rm.neg)
+    save(file=expectFile, agg.g) #save cache
   }
   
   ### DENSITY THRESHOLDING: binarize and threshold graphs at densities ranging from 1-20%
@@ -64,5 +96,5 @@ setup_graphs <- function(adjmatarray, allowCache=TRUE, ncpus=4) {
     save(file=expectFile, allg_density)
   }
   
-  return(list(allg=allg, allg_noneg=allg_noneg, allg_density=allg_density))
+  return(list(allg=allg, allg_noneg=allg_noneg, allg_density=allg_density, agg.g = agg.g))
 }

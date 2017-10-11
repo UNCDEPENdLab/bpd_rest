@@ -14,18 +14,27 @@ runinfomap <- function(agg.g, hierarchical=FALSE, verbose=FALSE, infomap_dir=fil
   
   prefix <- ifelse(verbose, "", "--silent")
   if (hierarchical) {
-    conf <- init(paste(prefix, "-N 500 -u -M 50")) #multi-level partition
+    initstring <- paste(prefix, "-N 500 -u -M 50") #multi-level partition
+    #initstring <- paste(prefix, "-N 10 -u -M 10") #multi-level partition
   } else {
-    conf <- init(paste(prefix,"--two-level --silent -N 500 -u -M 50")) #two-level partition, allow 50 iterations of module assignment loop    
+    initstring <- paste(prefix,"--two-level --silent -N 500 -u -M 50")  #two-level partition, allow 50 iterations of module assignment loop
+    #initstring <- paste(prefix,"--two-level --silent -N 10 -u -M 10")  #two-level partition, allow 50 iterations of module assignment loop
   }
 
+  conf <- init(initstring)
+  message("conf: ", initstring)
   network <- Network(conf);
   
   ## Add links to Infomap network from igraph data
+  #Infomap requries that nodes are labeled sequentially.
+  #here, we have V<number>, but there can be jumps in igraph naming
+  oldnames <- V(agg.g)$name 
+  V(agg.g)$name <- paste0("V", 1:vcount(agg.g))
+  
   edgelist <- as_edgelist(agg.g)
   
-  #this assumes that nodes are labeled V<number>
   edgelist <- apply(edgelist, c(1,2), function(x) { as.numeric(sub("V", "", x, fixed=TRUE)) - 1 }) ##convert to 0-based numeric edgelist
+  
   if (weighted) { edgelist <- cbind(edgelist, E(agg.g)$weight) } #tack on third column
   
   #add links between e1 and e2 (dummy does nothing -- just need $addLink to add onto network object)
@@ -64,6 +73,7 @@ runinfomap <- function(agg.g, hierarchical=FALSE, verbose=FALSE, infomap_dir=fil
   }
   
   ## Create igraph community data
+  V(agg.g)$name <- oldnames #restore naming for return community object
   comm <- create.communities(agg.g, modules, algorithm = 'Infomap')
   #print(comm)
   ## Plot communities and network

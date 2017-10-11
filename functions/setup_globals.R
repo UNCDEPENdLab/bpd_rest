@@ -1,6 +1,23 @@
 #################################################################################
 ## Specifications to set up graph analysis
 ## This should be sourced by scripts that import files or compute metrics
+if(!exists("basedir")) {
+  stop("You must define the basedir for the project")
+} else if (!file.exists(basedir)) {
+  stop("basedir: ", basedir, " does not exist.")
+}
+
+source("functions/get_subj_info.R")
+source("functions/calcGraph_binary.R")
+source("functions/import_adj_mats.R")
+source("functions/setup_graphs.R")
+source("functions/setup_community.R")
+source("functions/graph_util_redux.R")
+source("functions/run_parse_deltacon.R")
+source("functions/wibw_module_degree.R")
+source("functions/analyze_nodal_metrics_PCA_func.R")
+source("Infomap/run_infomap.R")
+
 nnodes <- 269  #varying this will require you to change the .txt coordinate file you read in for roiMat (should be 4 X nnodes txt file labelled:"x", "y", "z", "roi") and the masterlookup atlas
 parcellation <- "power269"
 roiFile <- file.path(basedir, "data", "bb264coordinate_appended_shift_nate_culled.txt")

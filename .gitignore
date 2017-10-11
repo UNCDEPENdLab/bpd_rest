@@ -66,5 +66,6 @@ Nate/.Rapp.history
 adjmats
 cache
 
-#
-functions/.Rapp.history
+#R.matlab junk
+MatlabServer.m
+InputStreamByteWrapper.class
