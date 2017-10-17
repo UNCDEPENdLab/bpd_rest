@@ -7,22 +7,37 @@ source("functions/setup_globals.R") #this will setup details of the parcellation
 
 #get_subj info, includes motion scrubbing procedure
 subj_info <- get_subj_info(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".RData", fd.scrub = TRUE, allowCache = TRUE)
-subj_info_ridge <- get_subj_info(adjmats_base, parcellation, "ridge.net_partial", preproc_pipeline, file_extension=".RData", fd.scrub = TRUE, allowCache = TRUE)
 # subj_info
 # table(subj_info[,c(4,8)])
 
 
 ##import raw adjacency matrices here (subj_info already contains the identified raw files)
-allmats_ridge <- import_adj_mats(subj_info_ridge, rmShort = rmShort, allowCache=TRUE)
 allmats <- import_adj_mats(subj_info, rmShort = rmShort, allowCache=FALSE)
 
-#obtain weighted, non-negative weighted, density-thresholded binary, and mean aggregate graphs
-gobjs <- setup_graphs(allmats, allowCache=TRUE)
+###test: check density dists across densities for 3 random subjects
+# pdf("dens.clime_hists_roix.pdf", width =12, height = 8)
+# for (sub in sample(1:length(allmats),3)){
+#   sub.mats <- allmats[[sub]]
+#   for (den in seq(1, dim(sub.mats)[1], 1)){
+#     plot.mat <- sub.mats[den,,]
+#     plot.df <- data.frame(plot.mat)
+#     plot.tidy <- gather(plot.df,  roi, value)
+#     gg.obj <- ggplot(plot.tidy, aes(x = roi, y = value)) + geom_histogram(stat = "identity", position = "dodge") + labs(title = paste0("subject:", sub, ", density: ", den))
+#     plot(gg.obj)
+#   }
+# }
+# dev.off()
 
+#obtain weighted, non-negative weighted, density-thresholded binary, and mean aggregate graphs
+gobjs <- setup_graphs(allmats, allowCache=FALSE)
+
+if(!conn_method == "dens.clime_partial"){
 #gobjs contains a list of weighted, non-negative weighted, and binary matrices
 #pull these out into single variables for simplicity
 allg <- gobjs$allg; allg_noneg <- gobjs$allg_noneg; allg_density <- gobjs$allg_density; agg.g <- gobjs$agg.g
-
+} else {
+  allg_density <- gobjs[[1]];allg_noneg <- gobjs[[2]]; agg.g <- gobjs[[3]]
+}
 rm(gobjs) #remove from environment to save memory
 
 #create heatmaps on aggregated data and random subjects (typically, this can stay commented out)
@@ -30,7 +45,7 @@ rm(gobjs) #remove from environment to save memory
 
 #community assignment
 if(use.yeo == 1){ 
-    yeo7 <- yeo7_community(agg.g)
+  yeo7 <- yeo7_community(agg.g)
   
   allg_noneg <- assign_communities(allg_noneg, yeo7, "community")
   allg_density <- assign_communities(allg_density, yeo7, "community")
@@ -43,10 +58,10 @@ if(use.yeo == 1){
 }
 
 #compute global metrics on density-thresholded graphs
-globalmetrics_dthresh <- compute_global_metrics(allg_density, allowCache=TRUE, community_attr="community") #community_attr determines how global/nodal statistics that include community are computed
+globalmetrics_dthresh <- compute_global_metrics(allg_density, allowCache=FALSE, community_attr="community") #community_attr determines how global/nodal statistics that include community are computed
 
 #compute nodal metrics on density-thresholded graphs
-nodalmetrics_dthresh <- compute_nodal_metrics(allg_density, allowCache=TRUE, community_attr="community") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
+nodalmetrics_dthresh <- compute_nodal_metrics(allg_density, allowCache=FALSE, community_attr="community") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
 
 #########################PCA Analysis Pipeline. 
 #run PCA across metrics and densities and pull scores into toanalyze

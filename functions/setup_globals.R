@@ -71,7 +71,7 @@ pcametrics <- c("eigen.cent","degree", "closeness", "betweenness.node", "page.ra
 adjmats_base <- file.path(basedir, "adjmats")
 #adjmats_base <- file.path("/Users/mnh5174/Data_Analysis/bpd_rest", "adjmats") #should be above, but working from a local copy to avoid messing up existing things
 
-densities_desired <- seq(.01, .25, .01) #used globally for binary graphs
+densities_desired <- seq(.05, .25, .01) #used globally for binary graphs
 
 message("Initializing RS graph analysis with the following settings: ")
 message("Parcellation: ", parcellation)

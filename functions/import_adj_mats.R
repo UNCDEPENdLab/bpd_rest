@@ -4,9 +4,11 @@ import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL, densities_
   
   if(is.null(densities_desired)){densities_desired <- seq(.05,.25,.01)} #create densities desired list if nothing is passed in
 
-  # browser()
+  
   stopifnot(file.exists(file.path(basedir, "cache")))
+  
   expectFile <- file.path(basedir, "cache", paste0("adjmats_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
+  
   if (file.exists(expectFile) && allowCache==TRUE) {
     message("Loading raw adjacency matrices from file: ", expectFile)
     load(expectFile)
@@ -14,7 +16,7 @@ import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL, densities_
     #either the cached file doesn't exist, or we've been asked not to accept it (allowCache=FALSE)
 
     #######################################################
-    #In progress: adapt script for dens.clime to export a list with subjs as elements containing densityxnodexnode 3d arrays
+    # adapt script for dens.clime to export a list with subjs as elements containing densityxnodexnode 3d arrays
     if(conn_method == "dens.clime_partial"){
       allmats <- get(load("adjmats/schaefer422_aroma_dens.clime_partial/dens.clime.all.RData"))
       names(allmats) <- toupper(sub("_.*", "", names(allmats)))
@@ -32,6 +34,7 @@ import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL, densities_
         allmats.list[[subj]] <- thrdim_allmats
       }
       
+      names(allmats.list) <- subj_info$SPECC_ID
     } else {
     ##preallocate empty array to read adjacency matrices into
     allmats <- array(NA, c(nrow(subj_info), nnodes, nnodes), 
@@ -51,12 +54,27 @@ import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL, densities_
     
     #remove short distance connections using 0/1 matrix passed in
     if (!is.null(rmShort)) {
+      
       message("Zeroing ", sum(rmShort[lower.tri(rmShort)] == 0), " connections less than ", roi.dist, "mm from raw adjacency matrices. ")
 
       #apply the short-range removal by replicating the 2D rmShort to a 3D array of the same size as
       #allmats, then elementwise multiplication (since this is vectorized and fast)
+      if(is.null(allmats.list)){
       rmtest <- aperm(replicate(n=dim(allmats)[1], rmShort), c(3,1,2))
       allmats <- allmats * rmtest
+      } else {
+        ##in the case of dens.clime, allmats list has nsubj list elements with a density x nodes x nodes 3d array. 
+        #so, what needs to be done here is create 3D array of the same size and lapply over the list to perform elementwise multiplication
+        rmtest <- aperm(replicate(n=length(densities_desired), rmShort), c(3,1,2))
+        
+        allmats.list <- lapply(allmats.list, function(sub){
+          allmats.short.remove <- sub * rmtest
+          return(allmats.short.remove)
+        })
+      }
+      
+     
+      
       
       #slightly different tack using abind to create array (not faster)
       #system.time(rmtest2 <- do.call(abind, list(along=0, replicate(n=dim(allmats)[1], rmShort, simplify=FALSE))))
