@@ -12,7 +12,7 @@ subj_info <- get_subj_info(adjmats_base, parcellation, conn_method, preproc_pipe
 
 
 ##import raw adjacency matrices here (subj_info already contains the identified raw files)
-allmats <- import_adj_mats(subj_info, rmShort = rmShort, allowCache=FALSE)
+allmats <- import_adj_mats(subj_info, rmShort = rmShort, allowCache=TRUE)
 
 ###test: check density dists across densities for 3 random subjects
 # pdf("dens.clime_hists_roix.pdf", width =12, height = 8)
@@ -36,7 +36,10 @@ if(!conn_method == "dens.clime_partial"){
 #pull these out into single variables for simplicity
 allg <- gobjs$allg; allg_noneg <- gobjs$allg_noneg; allg_density <- gobjs$allg_density; agg.g <- gobjs$agg.g
 } else {
-  allg_density <- gobjs[[1]];allg_noneg <- gobjs[[2]]; agg.g <- gobjs[[3]]
+  #In the case of dens.clime
+  allg_density <- gobjs[[1]] #list of weighted graphs. subjs X densities
+  allg_noneg <- gobjs[[2]] # list of weighted non-negative graphs. subjs X densities
+  agg.g <- gobjs[[3]] # single aggregate mean graph from ridge 
 }
 rm(gobjs) #remove from environment to save memory
 
@@ -57,12 +60,15 @@ if(use.yeo == 1){
   allg_density <- assign_communities(allg_density, community, "community")
 }
 
-#compute global metrics on density-thresholded graphs
+if(!conn_method == "dens.clime_partial"){
+#compute global metrics on BINARY density-thresholded graphs
 globalmetrics_dthresh <- compute_global_metrics(allg_density, allowCache=FALSE, community_attr="community") #community_attr determines how global/nodal statistics that include community are computed
-
-#compute nodal metrics on density-thresholded graphs
+#compute nodal metrics on BINARY density-thresholded graphs
 nodalmetrics_dthresh <- compute_nodal_metrics(allg_density, allowCache=FALSE, community_attr="community") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
-
+} else {
+  globalmetrics_dthresh <- compute_global_metrics(allg_noneg, allowCache = FALSE, community_attr = "community")
+  nodalmetrics_dthresh <- compute_nodal_metrics(allg_noneg, allowCache=FALSE, community_attr="community", weighted = TRUE) 
+}
 #########################PCA Analysis Pipeline. 
 #run PCA across metrics and densities and pull scores into toanalyze
 #NOTE PCA a_priori and all have only been verified to work with pearson and ridge

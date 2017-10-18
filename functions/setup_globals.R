@@ -11,7 +11,10 @@ if(!exists("basedir")) {
 ###SOURCE CUSTOM FUNCTIONS
 ######################################################################
 source("functions/get_subj_info.R")
-source("functions/calcGraph_binary.R")
+source("functions/calcGraph_nodal.R")
+source("functions/calcGraph_global.R")
+source("functions/compute_global_metrics.R")
+source("functions/compute_nodal_metrics.R")
 source("functions/import_adj_mats.R")
 source("functions/setup_graphs.R")
 source("functions/setup_community.R")
@@ -32,6 +35,7 @@ source("functions/plot_significant_groupeffects.R")
 #source("functions/plot_significant_ixn.R") ##issue, since this calls on subj_info it must be read in later
 source("functions/export_bpd_sig_nodefiles.R")
 source("functions/generate_agg.g.R")
+source("functions/gateway_coeff_NH.R")
 
 
 ######################################################################
@@ -116,8 +120,8 @@ if (file.exists(expectFile)) {
 ######################################################################
 ## Load necessary libraries
 suppressMessages(library(igraph))
-# suppressMessages(library(RGtk2))
-# suppressMessages(library(brainGraph))
+suppressMessages(library(RGtk2))
+suppressMessages(library(brainGraph))
 suppressMessages(library(ggplot2))
 suppressMessages(library(plyr))
 suppressMessages(library(dplyr))
