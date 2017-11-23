@@ -8,13 +8,14 @@ get_subj_info <- function(adjmats_base, parcellation, conn_method, preproc_pipel
     message("Loading subject info from file: ", expectFile)
     load(expectFile)
   } else {
-    SPECC_rest <- read.csv(file.path(basedir, "data", "SPECC_Participant_Info.csv"), header = TRUE, stringsAsFactors = FALSE)
+    SPECC_rest <- read.csv(file.path(basedir, "data", "SPECC_Participant_Info.csv"), header = TRUE, stringsAsFactors = FALSE) 
     SPECC_rest$file <- NA_character_
     SPECC_rest$Luna_ID <- as.character(SPECC_rest$Luna_ID) #force to character type to align with SPECC_ID
     SPECC_rest$SPECC_ID <- as.character(SPECC_rest$SPECC_ID) #force to character type to align with Luna_ID
     SPECC_rest$ScanDate <- as.Date(SPECC_rest$ScanDate, format="%m/%d/%y")
     SPECC_rest$DOB <- as.Date(SPECC_rest$DOB, format="%m/%d/%y")
-    SPECC_rest <- subset(SPECC_rest, HasRest==1 & FMRI_Exclude==0)
+    SPECC_rest <- subset(SPECC_rest, HasRest==1 & FMRI_Exclude==0)  
+    SPECC_rest <- SPECC_rest[!SPECC_rest$SPECC_ID == "023DS",] #remove excluded participant with NA field for ScanDate
     
     #browser()
     
@@ -30,9 +31,9 @@ get_subj_info <- function(adjmats_base, parcellation, conn_method, preproc_pipel
     
     #files should be named <ID>_<DATE>_<PARCELLATION>_<CONN_METHOD><FILE_EXTENSION>
     for (i in 1:nrow(SPECC_rest)) {
-      fname <- file.path(adjexpect, tolower(paste0(expectid[i], "_", expectdate[i], "_", parcellation, "_", conn_method, file_extension)))
+      fname <- file.path(adjexpect, paste0(tolower(paste0(expectid[i], "_", expectdate[i], "_", parcellation, "_", conn_method)), file_extension))
       if (!file.exists(fname)) { 
-        stop("Cannot find expected adjacency matrix: ", fname) 
+        message("Cannot find expected adjacency matrix: ", fname) 
       } else {
         SPECC_rest$file[i] <- fname
       }    

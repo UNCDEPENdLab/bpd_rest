@@ -1,10 +1,12 @@
-PCA_all <- function(nodalmetrics_dthresh_df, pcametrics, allowCache = TRUE, den = .04){
-  ##den refers to low densities, below which we want to remove from the PCA analysis. default is .04 
+PCA_all <- function(nodalmetrics_dthresh_df, pcametrics, allowCache = TRUE, den = .05){
+  ##den refers to low densities, below which we want to remove from the PCA analysis. default is .05
   
   require(wle)  
   require(psych)
   require(reshape2)
   require(tidyr)
+  require(tidyverse)
+  
   
   if(is.null(nodalmetrics_dthresh_df)){
     #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
@@ -20,14 +22,43 @@ PCA_all <- function(nodalmetrics_dthresh_df, pcametrics, allowCache = TRUE, den 
   } else {
     
     ####stack metrics in data.frame to have subjects, nodes, densities, *and* metrics on the rows
+    
+    
     metrics.raw <- nodalmetrics_dthresh_df %>% select(id, node, density, one_of(pcametrics)) %>%
       filter(density > den) %>% gather(key="variable", value="value", -id, -node, -density)
+    
+    ##testing
+    metrics.raw <- metrics.raw[which(metrics.raw$density > .14),]
     
     #recast for PCA such that column names represent a metrics at a given density (e.g., 0.05_between.module.deg.zscore)
     metrics.raw_pca <- dcast(metrics.raw, id + node ~ density + variable, value.var = "value")
     
+    
+    
+    
     toanalyze <- select(metrics.raw_pca, id, node)
     
+    if(conn_method == "dens.clime_partial"){
+      pcaout3 <- pca(select(metrics.raw_pca, -id, -node), nfactors=3, rotate="varimax")
+      print(pcaout3$loadings, cutoff = 0.3)
+      pcaout4 <- pca(select(metrics.raw_pca, -id, -node), nfactors=4, rotate="varimax")
+      print(pcaout4$loadings, cutoff = 0.3)
+      pcaout5 <- pca(select(metrics.raw_pca, -id, -node), nfactors=5, rotate="varimax")
+      print(pcaout5$loadings, cutoff = 0.3)
+      pcaout6 <- pca(select(metrics.raw_pca, -id, -node), nfactors=6, rotate="varimax")
+      print(pcaout6$loadings, cutoff = 0.3)
+      
+      pcasolution <- data.frame(pcaout5$scores) #use these, which are the rotated scores, not the raw eigenvectors from $x in prcomp
+      #names(pcasolution) <- c("central", "between.node", "within.mod") #relevant for stats without gateway and participation
+      names(pcasolution) <- c("integration", "central", "within.mod", "closeness", "betweenness") 
+      
+      
+      toanalyze <- cbind(select(metrics.raw_pca, id, node), pcasolution)
+      #subj_info <- get_subj_info(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".txt.gz")
+      merge.bpdage <- subj_info %>% dplyr::select(SPECC_ID, BPD, AgeAtScan) %>% dplyr::rename(id=SPECC_ID, Age=AgeAtScan)
+      
+      toanalyze <- dplyr::left_join(toanalyze, merge.bpdage, by = "id")
+    }
     
     if(conn_method == "pearson"){
       pcaout5 <- pca(select(metrics.raw_pca, -id, -node), nfactors=5, rotate="varimax")

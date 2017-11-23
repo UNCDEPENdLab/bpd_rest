@@ -1,7 +1,32 @@
-compute_global_metrics <- function(graphs, ncpus=4, allowCache=TRUE, community_attr="community") {
+compute_global_metrics <- function(graphs, ncpus=4, allowCache=TRUE, community_attr="community", weighted = FALSE) {
   require(foreach)
   require(doSNOW)
-  
+  if(weighted == TRUE){
+    ####################################
+    ##BEGIN WEIGHTED
+    expectFile <- file.path(basedir, "cache", paste0("weightedglobmetrics_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
+    if (file.exists(expectFile) && allowCache==TRUE) {
+      message("Loading weighted global statistics from file: ", expectFile)
+      load(expectFile)
+    } else {
+      setDefaultClusterOptions(master="localhost")
+      clusterobj <- makeSOCKcluster(ncpus)
+      registerDoSNOW(clusterobj)
+      on.exit(try(stopCluster(clusterobj))) #shutdown cluster when function exits (either normally or crash)
+      
+      ##compute global metrics
+      globmetrics_weighted <- foreach(subj=graphs, .packages = c("igraph", "brainGraph"), .export=c("calcGraph_global")) %dopar% {
+        glist <- calcGraph_global(subj, community_attr = community_attr)
+      }
+      #flatten metrics down to a data.frame
+      #allmetrics.global is currently a [[subjects]][[densities]][[metrics]] list
+      allmetrics.global.df <- do.call(rbind, globmetrics_weighted)
+      save(file=expectFile, globmetrics_weighted, allmetrics.global.df)
+    }
+    return(list(allmetrics.global=globmetrics_weighted, allmetrics.global.df=allmetrics.global.df))
+  } else {
+  ####################################
+  ##BEGIN BINARY
   expectFile <- file.path(basedir, "cache", paste0("dthreshglobmetrics_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
   if (file.exists(expectFile) && allowCache==TRUE) {
     message("Loading density-thresholded global statistics from file: ", expectFile)
@@ -24,10 +49,6 @@ compute_global_metrics <- function(graphs, ncpus=4, allowCache=TRUE, community_a
       names(dl) <- paste0("d", densities_desired)
       dl
     }
-    
-    
-    
-    
     #flatten metrics down to a data.frame
     #allmetrics.global is currently a [[subjects]][[densities]][[metrics]] list
     allmetrics.global.df <- do.call(rbind, lapply(allmetrics.global, function(subj) {
@@ -39,6 +60,6 @@ compute_global_metrics <- function(graphs, ncpus=4, allowCache=TRUE, community_a
     row.names(allmetrics.global.df) <- NULL #remove goofy d0.01 rownames
     save(file=expectFile, allmetrics.global, allmetrics.global.df)
   }
-  
   return(list(allmetrics.global=allmetrics.global, allmetrics.global.df=allmetrics.global.df))
+  }
 }  

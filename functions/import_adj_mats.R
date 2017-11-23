@@ -11,13 +11,12 @@ import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL, densities_
   
   if (file.exists(expectFile) && allowCache==TRUE) {
     message("Loading raw adjacency matrices from file: ", expectFile)
-    load(expectFile)
+    allmats <- get(load(expectFile))
   } else {
-    #either the cached file doesn't exist, or we've been asked not to accept it (allowCache=FALSE)
-
-    #######################################################
-    # adapt script for dens.clime to export a list with subjs as elements containing densityxnodexnode 3d arrays
+    sep <- ""
+    
     if(conn_method == "dens.clime_partial"){
+      # adapted script for dens.clime to export a list with subjs as elements containing densityxnodexnode 3d arrays
       allmats <- get(load("adjmats/schaefer422_aroma_dens.clime_partial/dens.clime.all.RData"))
       names(allmats) <- toupper(sub("_.*", "", names(allmats)))
       allmats <- allmats[names(allmats) %in% subj_info$Luna_ID | names(allmats) %in% subj_info$SPECC_ID]
@@ -39,15 +38,15 @@ import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL, densities_
     ##preallocate empty array to read adjacency matrices into
     allmats <- array(NA, c(nrow(subj_info), nnodes, nnodes), 
                      dimnames=list(id = subj_info$SPECC_ID, roi1=atlas$name, roi2=atlas$name))
-    
-    sep=ifelse(conn_method=="scotmi", ",", "") #for use in read.table command
 
     for (f in 1:nrow(subj_info)) {
-      m <- as.matrix(read.table(as.character(subj_info[f,"file"]), sep=sep, header=FALSE))
-      if (conn_method=="scotmi") {
-        m <- rbind(array(NaN, ncol(m)), m) #append a NaN vector onto first row (omitted from SCoTMI output)
-        m[upper.tri(m)] <- t(m)[upper.tri(m)] #populate upper triangle for symmetry
-      }
+      if(conn_method == "dens.clime_partial_plateau"){
+        
+        x <- load(file = subj_info[f, "file"])
+        
+      } else{
+        m <- as.matrix(read.table(as.character(subj_info[f,"file"]), sep=sep, header=FALSE))}
+        
       allmats[f,,] <- m
       }
     }
@@ -92,12 +91,9 @@ import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL, densities_
     
   }
   
-  if(!is.null(allmats.list)){
-    save(allmats.list, file = expectFile)
-  } else {save(allmats, file=expectFile) }#cache results
-  
   #return 3d array to caller
-  if(!is.null(allmats.list)){
-    return(allmats.list)
-  } else{return(allmats)}
+  if(exists("allmats.list")){
+    save(allmats.list, file = expectFile)
+    } else {save(allmats, file=expectFile) }#cache results
+  return(allmats)
   }

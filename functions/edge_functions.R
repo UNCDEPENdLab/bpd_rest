@@ -15,6 +15,7 @@ for (i in 1:nnodes) {
       res <- t.test(atanh(controlcorrs), atanh(bpdcorrs))
       edgepvals[i,j] <- res$p.value
       edgepvals[j,i] <- res$statistic #t stat on upper triangle
+      if(is.nan(edgepvals[j,i])) {edgepvals[j,i] <- 0}
       if (!is.nan(res$statistic) && abs(res$statistic) > abst) {
         cat("Significant edge difference: ", i, j, ", t=", round(res$statistic, 3), "p =", round(res$p.value, 3), "means are:", round(res$estimate, 5), "\n")
         sig.edge <- data.frame(edge1 = i, edge2 = j, tval = round(res$statistic, 3), p = round(res$p.value, 3), mean.control = round(res$estimate[1], 5), mean.bpd = round(res$estimate[2], 5))
@@ -31,7 +32,7 @@ for (i in 1:length(edge.diffs[,1])){
 }
 
 row.names(edge.diffs) <- NULL
-return(edge.diffs)
+return(list(edge.diffs, edgepvals))
 }
 
 

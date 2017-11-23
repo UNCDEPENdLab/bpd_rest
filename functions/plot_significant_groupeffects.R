@@ -1,4 +1,4 @@
-plot_significant_groupeffects <- function(bpd.main){
+plot_significant_groupeffects <- function(bpd.main, reducemetrics){
   # bpd.main <- subset(all.sig.nodal.pca, is.na(term))
   
   # bpd.main <- signod.bpd
@@ -8,6 +8,7 @@ plot_significant_groupeffects <- function(bpd.main){
   row.names(bpd.main) <- seq(1, length(bpd.main$nodenum), 1)
   bpd.main.all <- data.frame()
   
+  browser()
   pdf(file = paste0(basedir, "/Figures/bpd_main_plot_", parcellation, "_", preproc_pipeline, "_", conn_method, "_", PCA.method, ".pdf"), width=10, height=7)
   for(res in 1:length(bpd.main[,1])){
     ss.bpd <- data.frame(subj_info[,c("BPD", "AgeAtScan")], metric = bpd.main[res,]$metric)
@@ -21,15 +22,15 @@ plot_significant_groupeffects <- function(bpd.main){
     ss.bpd$roiname <- paste0(bpd.main[res,]$nodenum, ": ", bpd.main[res,]$nodename)
     ss.bpd$roinum <- bpd.main[res,]$nodenum
     
-    for(m in 1:length(metrics.pca)){
-      if(ss.bpd$metric[1] == metrics.pca[m]){
+    for(m in 1:length(reducemetrics)){
+      if(ss.bpd$metric[1] == reducemetrics[m]){
         ss.bpd$metric.label <- PClabs[m]
       }
     }
-    # 
-    # if(ss.bpd$metric[1] == metrics.pca[1]){
+
+    # if(ss.bpd$metric[1] == reducemetrics[1]){
     #   ss.bpd$metric.label <- PClabs[1]
-    # } else if(ss.bpd$metric[1] == metrics.pca[2]){
+    # } else if(ss.bpd$metric[1] == reducemetrics[2]){
     #   ss.bpd$metric.label <- "PC2: Betweenness Centrality"
     # } else if(ss.bpd$metric[1] == "within.mod"){
     #   ss.bpd$metric.label <- "PC3: Within Module Connectivity"
@@ -45,7 +46,7 @@ plot_significant_groupeffects <- function(bpd.main){
     bpd.main.all <- rbind(bpd.main.all, ss.bpd)
   }
   
-  for (m in metrics.pca){
+  for (m in reducemetrics){
     #bc some metrics may see no effects
     if(m %in% bpd.main.all$metric){
     this.metric <- bpd.main.all[which(bpd.main.all$metric ==m), ]

@@ -1,8 +1,7 @@
-setup_graphs <- function(adjmats_all, aggfun = NULL, agg.rm.neg = TRUE, allowCache=TRUE, ncpus=4, dens_rm = .10) {
+setup_graphs <- function(adjmats_all, aggfun = NULL, agg.rm.neg = TRUE, allowCache=TRUE, ncpus=4) {
   #expects a subjects x ROIs x ROIs array OR list of density x ROIs x ROIs arrays (per subject) for dens.clime
   #creates igraph objects from adjacency matrix and label nodes V1, V2,...
   #looks up atlas from global environment
-  #dens.rm correspoonds to the first density we will keep when calculating allg_noneg in the case of the dens.clime conn_method
   suppressMessages(require(igraph))
   suppressMessages(require(foreach))
   suppressMessages(require(doSNOW))
@@ -12,14 +11,9 @@ setup_graphs <- function(adjmats_all, aggfun = NULL, agg.rm.neg = TRUE, allowCac
   if(conn_method == "dens.clime_partial"){stopifnot(length(atlas$name) == length(adjmats_all[[1]][1,1,]))} else{
   stopifnot(length(atlas$name) == dim(adjmats_all)[2]) #number of nodes must match between atlas and adjmats
   }
-  
-  
-  
+
   if(conn_method == "dens.clime_partial"){
-    #standard
     expectFile <- file.path(basedir, "cache", paste0("allg_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
-    #Oct17 debug
-    # expectFile <- file.path(basedir, "cache", paste0("allg_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
     if (file.exists(expectFile) && allowCache==TRUE) {
       message("Loading dens.clime weighted graph objects list from file: ", expectFile)
       load(expectFile)
@@ -37,15 +31,13 @@ setup_graphs <- function(adjmats_all, aggfun = NULL, agg.rm.neg = TRUE, allowCac
   })
   
   #label allg graphs with subject IDs 
-  
   for (sub in 1:length(allg)) { 
     for (den in 1:length(densities_desired))
     allg[[sub]][[den]]$id <- names(adjmats_all)[sub]
     }
-    
   
   save(file = expectFile, allg)
-    }
+  }
     
     expectFile <- file.path(basedir, "cache", paste0("weightedgraphsnoneg_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
     if (file.exists(expectFile) && allowCache==TRUE) {
@@ -91,6 +83,8 @@ setup_graphs <- function(adjmats_all, aggfun = NULL, agg.rm.neg = TRUE, allowCac
     save(file=expectFile, allg) #save cache
     
   }
+  # Remove Negative Edges -----------------------------------------------
+  
   #### Setup weighted graphs, removing negative edges
   expectFile <- file.path(basedir, "cache", paste0("weightedgraphsnoneg_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
   if (file.exists(expectFile) && allowCache==TRUE) {
@@ -101,6 +95,8 @@ setup_graphs <- function(adjmats_all, aggfun = NULL, agg.rm.neg = TRUE, allowCac
     allg_noneg <- lapply(allg, function(g) { delete.edges(g, which(E(g)$weight < 0)) })
     save(file=expectFile, allg_noneg) #save cache
   }
+ 
+  # Mean Graph -----------------------------------------------
   
   #### Generate aggregate graph, defaults to mean of all adjmats with neg weights removed
   expectFile <- file.path(basedir, "cache", paste0("agg.g_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
@@ -112,12 +108,14 @@ setup_graphs <- function(adjmats_all, aggfun = NULL, agg.rm.neg = TRUE, allowCac
     save(file=expectFile, agg.g) #save cache
   }
   
+  # Proportional Thresholding -----------------------------------------------
+  
   ### DENSITY THRESHOLDING: binarize and threshold graphs at densities ranging from 1-20%
   #uses densities_desired from setup_globals.R
   
   expectFile <- file.path(basedir, "cache", paste0("dthreshgraphs_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
   if (file.exists(expectFile) && allowCache==TRUE) {
-    message("Loading density-thresholded graph objects from file: ", expectFile)
+    message("Loading proportional density-thresholded graph objects from file: ", expectFile)
     load(expectFile)
   } else {
     setDefaultClusterOptions(master="localhost")
@@ -140,7 +138,36 @@ setup_graphs <- function(adjmats_all, aggfun = NULL, agg.rm.neg = TRUE, allowCac
     #each element of allg_density is a list of 20 binary graphs for that subject at 1-20% density
     save(file=expectFile, allg_density)
     }
-  return(list(allg=allg, allg_noneg=allg_noneg, allg_density=allg_density, agg.g = agg.g))
+  # FC threshold by density -------------------------------------------------
+  
+  #IN PROGRESS. 
+  
+  # browser()
+  # 
+  # allg_selective_bydensity <- threshold_glist(allg_noneg, densities_desired, method="density", rmweights = TRUE, ncores = 1)
+  # 
+  # 
+  # dlist <- lapply(allg_selective_bydensity, function(d) { 
+  #   gout <- lapply(d, function(g) {
+  #     sapply(g, function(s) {
+  #       s$wthresh
+  #     })
+  #   })
+  #   bind_rows(gout)
+  # })
+  # 
+  # plot(sapply(dlist, function(d) {
+  #   mean(colMeans(d))
+  # }))
+  
+  allg_density_fc <- NULL # for now
+  
+  
   }
-  return(list(allg, allg_noneg, agg.g))
+  
+  return(list(allg=allg, allg_noneg=allg_noneg, allg_density=allg_density, agg.g = agg.g, allg_density_fc = allg_density_fc))
+  
 }
+
+
+
