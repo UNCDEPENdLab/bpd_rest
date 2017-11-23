@@ -65,15 +65,17 @@ Nate/.Rapp.history
 #big files in here: don't commit
 adjmats
 cache
-figures
-BNV_nodefiles
-abstracts
-data
-output.files
-old
-Viz_files
-nate_infomap_coords
 
+#other files/folders not to track
+BNV_nodefiles
+Infomap
+tutorial images
+
+<<<<<<< HEAD
+#
+functions/.Rapp.history
+=======
 #R.matlab junk
 MatlabServer.m
 InputStreamByteWrapper.class
+>>>>>>> 3977550ef15ca2f6125d954971cbf7737b0caeb8
