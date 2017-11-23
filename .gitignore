@@ -65,10 +65,17 @@ Nate/.Rapp.history
 #big files in here: don't commit
 adjmats
 cache
+figures
+results
 
 #other files/folders not to track
 BNV_nodefiles
-Infomap
+abstracts
+data
+output.files
+old
+Viz_files
+nate_infomap_coords
 tutorial images
 
 <<<<<<< HEAD
