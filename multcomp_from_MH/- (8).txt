@@ -1,0 +1,5 @@
+m1 <- lmer(centrality ~ 1 + node*group + (1|subject), df)
+cmat <- pairs(lsmeans(~group | node, m1))
+forglht <- cmat@linfct
+
+summary(glht(m1, linfct=forglht), test=adjusted("single-step"))

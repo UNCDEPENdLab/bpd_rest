@@ -1,4 +1,0 @@
-r_amygdala 20
-l_amygdala 10
-l_caudate 5
-r_caudate 16

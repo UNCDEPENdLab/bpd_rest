@@ -4,10 +4,10 @@ import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL, densities_
   
   if(is.null(densities_desired)){densities_desired <- seq(.05,.25,.01)} #create densities desired list if nothing is passed in
 
-  
+  # browser()
   stopifnot(file.exists(file.path(basedir, "cache")))
   
-  expectFile <- file.path(basedir, "cache", paste0("adjmats_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
+  expectFile <- file.path(basedir, "cache", paste0("adjmats_", file_tag, ".RData"))
   
   if (file.exists(expectFile) && allowCache==TRUE) {
     message("Loading raw adjacency matrices from file: ", expectFile)
@@ -45,11 +45,13 @@ import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL, densities_
         x <- load(file = subj_info[f, "file"])
         
       } else{
+        cat("Reading file:", as.character(subj_info[f,"file"]), "\n")
         m <- as.matrix(read.table(as.character(subj_info[f,"file"]), sep=sep, header=FALSE))}
         
       allmats[f,,] <- m
       }
     }
+    
     
     #remove short distance connections using 0/1 matrix passed in
     if (!is.null(rmShort)) {
@@ -58,9 +60,14 @@ import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL, densities_
 
       #apply the short-range removal by replicating the 2D rmShort to a 3D array of the same size as
       #allmats, then elementwise multiplication (since this is vectorized and fast)
-      if(is.null(allmats.list)){
+      if(!exists("allmats.list")){
       rmtest <- aperm(replicate(n=dim(allmats)[1], rmShort), c(3,1,2))
-      allmats <- allmats * rmtest
+      allmats_rm <- allmats * rmtest
+      
+      # pdf("which_edges_go.pdf", width = 11, height = 8)
+      # histogram(allmats, breaks = 50)
+      # hist(allmats_rm)
+      # 
       } else {
         ##in the case of dens.clime, allmats list has nsubj list elements with a density x nodes x nodes 3d array. 
         #so, what needs to be done here is create 3D array of the same size and lapply over the list to perform elementwise multiplication
@@ -88,8 +95,18 @@ import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL, densities_
       
       #basic apply over rows, apply(allmats, 1), throws away array dimensions and dimnames
     }
-    
   }
+  
+  ##remove diagonal regardless of you remove short edges
+  rmdiag <- array(1, c(nrow(subj_info), nnodes, nnodes), 
+                   dimnames=list(id = subj_info$SPECC_ID, roi1=atlas$name, roi2=atlas$name))
+  
+  for(i in 1:nrow(subj_info))(
+     diag(rmdiag[i,,]) <- 0
+  )
+  
+  allmats <- allmats *rmdiag
+  
   
   #return 3d array to caller
   if(exists("allmats.list")){

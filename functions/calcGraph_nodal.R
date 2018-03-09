@@ -33,7 +33,7 @@ calcGraph_nodal <- function(origgraph, community_attr="community", weighted = FA
     #####WEIGHTED
     ##centrality
     allmetrics$local.clustering <- transitivity(origgraph, type = "local") #defaults to read edge weights when available
-    allmetrics$degree <- degree(origgraph, v = V(origgraph))
+    # allmetrics$degree <- degree(origgraph, v = V(origgraph))
     allmetrics$strength <- strength(origgraph, v = V(origgraph))
     evcent<- eigen_centrality(origgraph, directed = FALSE) #defaults to read edge weights when available
     allmetrics$eigen.cent <- evcent$vector

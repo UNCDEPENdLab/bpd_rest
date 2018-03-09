@@ -1,0 +1,64 @@
+library(R.matlab)
+vv <- readMat("counts.mat")
+str(vv)
+vv$nrep
+table(vv$nrep)
+unique(vv$nrep)
+unique(as.vector(vv$nrep))
+length(unique(as.vector(vv$nrep)))
+vv$nrep
+vv <- readMat("counts.mat")
+vv
+str(vv)
+length(unique(as.vector(vv$nrep))
+)
+table(unique(as.vector(vv$nrep))
+)
+table(as.vector(vv$nrep))
+str(vv)
+vv$i
+library(igraph)
+g <- graph_from_edgelist(cbind(vv$i, vv$j))
+str(g)
+g
+g <- graph_from_edgelist(cbind(vv$i, vv$j), directed=FALSE)
+g
+degree(g)
+length(E(g))
+length(V(g))
+components(g)
+?components
+incident(g, 1)
+incident(g, 2)
+vv <- readMat("counts.mat")
+str(vv)
+vv <- readMat("counts_n65.mat")
+str(vv)
+g <- graph_from_edgelist(cbind(vv$i, vv$j), directed=FALSE)
+g
+incident(g, 1)
+components(g)
+degree(g)
+str(vv)
+table(as.vector(vv$nrep))
+unique(as.vector(vv$nrep))
+length(unique(as.vector(vv$nrep)))
+?graph_from_edgelist
+g <- graph_from_edgelist(as.character(cbind(vv$i, vv$j)), directed=FALSE)
+as.character(cbind(vv$i, vv$j))
+apply(cbind(vv$i, vv$j), c(1,2), as.character)
+elist <- apply(cbind(vv$i, vv$j), c(1,2), as.character)
+g <- graph_from_edgelist(as.character(cbind(vv$i, vv$j)), directed=FALSE)
+g <- graph_from_edgelist(elist, directed=FALSE)
+g
+components(g)
+degree(g)
+ls()
+i <- vv$i
+j <- vv$j
+nrep <- vv$nrep
+conmat <- vv$conmat
+str(conmat)
+ls()
+save(file="nbs_results_n65.RData", conmat, i, j, nrep, g, elist)
+savehistory(file="nbs_machinations.txt")

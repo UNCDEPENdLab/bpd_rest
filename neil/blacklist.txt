@@ -1,9 +1,0 @@
-/Volumes/Serena/Raj/Preprocess_Rest/10637_20140304/corr_rois_pearson_new_r_v2.txt excess movement
-/Volumes/Serena/Raj/Preprocess_Rest/10711_20140826/corr_rois_pearson_new_r_v2.txt excess movement
-/Volumes/Serena/SPECC/MR_Proc_Rest/001ra_07dec2013/mni_5mm_wavelet/rest1/corr_rois_pearson_new_r_v2.txt unknown
-/Volumes/Serena/SPECC/MR_Proc_Rest/005ai_06Nov2013/mni_5mm_wavelet/rest1/corr_rois_pearson_new_r_v2.txt unknown
-/Volumes/Serena/SPECC/MR_Proc_Rest/023ds_07May2014/mni_5mm_wavelet/rest1/corr_rois_pearson_new_r_v2.txt misreported age, excess movement
-/Volumes/Serena/SPECC/MR_Proc_Rest/050ai_06Nov2014/mni_5mm_wavelet/rest1/corr_rois_pearson_new_r_v2.txt excess movement
-/Volumes/Serena/SPECC/MR_Proc_Rest/0531lw_16Dec2014/mni_5mm_wavelet/rest1/corr_rois_pearson_new_r_v2.txt incorrect syntax, correct folder present (also movement)
-/Volumes/Serena/SPECC/MR_Proc_Rest/053lw_16Dec2014/mni_5mm_wavelet/rest1/corr_rois_pearson_new_r_v2.txt excess movement
-/Volumes/Serena/SPECC/MR_Proc_Rest/057as-09Dec2014/mni_5mm_wavelet/rest1/corr_rois_pearson_new_r_v2.txt incorrect syntax, correct folder present

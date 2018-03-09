@@ -16,7 +16,7 @@ filter_movement <- function(subj_info, dir, thresh=0.5, spikes.exclude=0.2, max.
   ## MH has now converted all SPECC MR directory names to all lower case to allow for match on case-sensitive filesystem and to make the naming consistent
   
   ##pull subject folders
-  subj_info <- subj_info %>% select(-Notes) %>% rowwise() %>% mutate(mr_dir=ifelse(LunaMRI==1,
+  subj_info <- subj_info %>% rowwise() %>% mutate(mr_dir=ifelse(LunaMRI==1,
           paste0(dir, "/MMClock/MR_Proc/", Luna_ID, "_", format((as.Date(ScanDate, format="%Y-%m-%d")), "%Y%m%d")), #convert to Date, then reformat YYYYMMDD
           paste0(dir, "/SPECC/MR_Proc/", tolower(SPECC_ID), "_", tolower(format((as.Date(ScanDate, format="%Y-%m-%d")), "%d%b%Y")))))
   
@@ -27,8 +27,8 @@ filter_movement <- function(subj_info, dir, thresh=0.5, spikes.exclude=0.2, max.
 
   for(r in 1:nrow(subj_info)) {
     thissub <- subj_info[r,]
-    if(file.exists(paste0(thissub$mr_dir, "/mni_nosmooth_", preproc_pipeline,"/rest1/motion_info/fd.txt"))){
-      this.sub.fd <- data.frame(Subj=as.character(thissub$SPECC_ID), FD=read.table(paste0(thissub$mr_dir, "/mni_nosmooth_", preproc_pipeline, "/rest1/motion_info/fd.txt"))$V1)
+    if(file.exists(paste0(thissub$mr_dir,"/mni_", preproc_pipeline,"/rest1/motion_info/fd.txt"))){
+      this.sub.fd <- data.frame(Subj=as.character(thissub$SPECC_ID), FD=read.table(paste0(thissub$mr_dir, "/mni_", preproc_pipeline, "/rest1/motion_info/fd.txt"))$V1)
 
       meanFD = mean(this.sub.fd$FD)
       maxFD = max(this.sub.fd$FD)
@@ -131,6 +131,7 @@ NodeFile <- function(atlas, community = NULL, nodestp = NULL, nodevals = NULL, n
 #######################################################################################################################
 ##tagGraph: tags igraph object with mni coordinates, brodmanns areas
 tagGraph <- function(gobj, atlas, nodefile) {
+  
   require(dplyr)
   
   if (!is.igraph(gobj)) {
@@ -148,7 +149,7 @@ tagGraph <- function(gobj, atlas, nodefile) {
   
   #must ensure that vmerge is sorted in the same order as gobj_vertices (merge will alpha sort the name field)
   #otherwise, assignment of attributes below could be completely out of order!
-  vmerge <- vmerge %>% arrange(number) %>% select(-number) #drop number to skip adding as vertex attribute
+  vmerge <- vmerge %>% arrange(number) %>% dplyr::select(-number) #drop number to skip adding as vertex attribute
   
   #read in the MNI coords (264 x 3) where 3 is x y z in MNI space
   #currently exported hemisphere into the atlas csv file
@@ -200,20 +201,6 @@ plotMetricQuant <- function(obj, q, metric, atlas) {
   # names(highvallabeled) <- high.val.names
   return(atlas.quant)
 }   
-
-#simple function to apply density thresholding to a weighted graph
-density_threshold <- function(g, d) {
-  stopifnot(is_igraph(g))
-  stopifnot(is.numeric(d) && d <= 1.0)
-  #Obtains desired density given graph diameter
-  weights <- sort(E(g)$weight, decreasing=TRUE)
-  threshold <- weights[length(V(g))*(length(V(g))-1)/2 * d]
-  gthresh <- delete.edges(g, which(E(g)$weight < threshold))
-  gthresh <- remove.edge.attribute(gthresh, "weight")
-  gthresh$density <- d #copy density into object for tracking
-  return(gthresh)  
-}
-
 
 #small helper function to just load the nodal metrics data.frame (see compute_nodal_metrics for code that creates this structure)
 load_nodal_metrics_df <- function() {

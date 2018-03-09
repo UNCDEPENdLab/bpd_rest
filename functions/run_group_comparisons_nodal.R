@@ -1,4 +1,5 @@
-run_group_comparisons_nodal <- function(toanalyze, abst = 2.64, allowCache = TRUE, weighted = FALSE){
+run_group_comparisons_nodal <- function(toanalyze, abst = 2.64, allowCache = TRUE, weighted = FALSE, browse = FALSE){
+  if(browse == TRUE) {browser()}
   if (weighted == FALSE){
 
 # Binary Graphs -----------------------------------------------------------
@@ -13,7 +14,7 @@ run_group_comparisons_nodal <- function(toanalyze, abst = 2.64, allowCache = TRU
     message("Loading binary nodal metric comparisons from: ", expectFile.ttest, ", ", expectFile.lm, ", ", expectFile.wle)
     all.sigwlelm.nodal <- read.csv(expectFile.wle)
     all.siglm.nodal <- read.csv(expectFile.lm) 
-    all.siglm.nodal <- read.csv(expectFile.ttest)
+    all.sigttest.nodal <- read.csv(expectFile.ttest)
   } else {
   
   metrics.toanalyze <- names(dplyr::select(toanalyze, -id, -node, -BPD, -Age))
@@ -21,8 +22,6 @@ run_group_comparisons_nodal <- function(toanalyze, abst = 2.64, allowCache = TRU
   lm_eff <- list() #all effects from lm
   wle.lm_eff <- list() #all effects from weighted likelihood (robust estimation)
   
-  
-  # browser()
   for (metric in metrics.toanalyze) {
     for (node in levels(toanalyze$node)) {
       thismetric <- toanalyze[toanalyze$node == node, c(metric, "BPD", "Age")]

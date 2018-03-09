@@ -1,12 +1,13 @@
-compute_nodal_metrics <- function(graphs, ncpus=4, allowCache=TRUE, community_attr="community", weighted = FALSE) {
+compute_nodal_metrics <- function(graphs, ncpus=4, allowCache=TRUE, community_attr="community", weighted = 0) {
   require(foreach)
   require(doSNOW)
 
-  if(weighted == FALSE){
+  if(weighted == 0){
   allg_density <- graphs
-  expectFile <- file.path(basedir, "cache", paste0("dthreshnodemetrics_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
+  
+  expectFile <- file.path(basedir, "cache", paste0("threshnodalmetrics_", file_tag, ".RData"))
   if (file.exists(expectFile) && allowCache==TRUE) {
-    message("Loading density thresholded nodal statistics from file: ", expectFile)
+    message("Loading thresholded nodal statistics from file: ", expectFile)
     load(expectFile)
   } else {
     ###compute nodal metrics 
@@ -17,7 +18,7 @@ compute_nodal_metrics <- function(graphs, ncpus=4, allowCache=TRUE, community_at
     
     # browser()
     
-    allmetrics.nodal <- foreach(subj=allg_density, .packages = c("igraph", "brainGraph"), .export=c("calcGraph_nodal", "gateway_coeff_NH", "wibw_module_degree", "densities_desired")) %dopar% {
+    allmetrics.nodal <- foreach(subj=allg_density, .packages = c("igraph", "brainGraph"), .export=c("calcGraph_nodal", "gateway_coeff_NH", "wibw_module_degree", "densities_desired", "thresh", "rs_desired_log")) %dopar% {
       #for (subj in allg_density) { #put here for more fine-grained debugging
       
       dl <- lapply(subj, function(dgraph) {
@@ -27,7 +28,7 @@ compute_nodal_metrics <- function(graphs, ncpus=4, allowCache=TRUE, community_at
         glist$node <- V(dgraph)$name
         return(glist)
       })
-      names(dl) <- paste0("d", densities_desired)
+      ifelse(thresh == "fc", names(dl) <- paste0("r", rs_desired_log), names(dl) <- paste0("d", densities_desired))
       return(dl)
     }
     
@@ -44,7 +45,7 @@ compute_nodal_metrics <- function(graphs, ncpus=4, allowCache=TRUE, community_at
     
   }} else {
     
-      expectFile <- file.path(basedir, "cache", paste0("weighted_nodemetrics_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
+      expectFile <- file.path(basedir, "cache", paste0("nodemetrics_", file_tag_nothresh, ".RData"))
       if (file.exists(expectFile) && allowCache==TRUE) {
         message("Loading weighted nodal statistics from file: ", expectFile)
         load(expectFile)

@@ -3,6 +3,7 @@ interrogate_node <- function(allmats, subj_info, node, quant=NULL, t.stat=NULL, 
     message("Choose either quantile or t statistic to view")
   }
 
+  # browser()
   edge.vals.vec <- allmats[,node,]
   
   controls <- which(subj_info$BPD == 0)

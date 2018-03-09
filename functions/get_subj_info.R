@@ -17,7 +17,7 @@ get_subj_info <- function(adjmats_base, parcellation, conn_method, preproc_pipel
     SPECC_rest <- subset(SPECC_rest, HasRest==1 & FMRI_Exclude==0)  
     SPECC_rest <- SPECC_rest[!SPECC_rest$SPECC_ID == "023DS",] #remove excluded participant with NA field for ScanDate
     
-    #browser()
+    # browser()
     
     if(conn_method != "dens.clime_partial"){
     #expects a base directory (e.g., "adjmats") with subdirectories of <parcellation>_<conn_method> (e.g., power269_pearson)

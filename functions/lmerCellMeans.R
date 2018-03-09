@@ -1,6 +1,8 @@
 #potentially add ability to get empirical bayes trajectories per person using coef?
 lmerCellMeans <- function(lmerObj, divide=NULL, n.divide=3, divide.prefix=TRUE, n.cont=20, cont.pts=NULL, fixat0=NULL,
     yoked=NULL) {
+  
+  
   #print cell means for lmer by expanding level combinations and multiplying against fixed effects
   predNames <- attr(terms(lmerObj), "term.labels")
 
