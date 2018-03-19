@@ -1,20 +1,23 @@
 
 # Final Pipeline ----------------------------------------------------------
 
-setwd("~/Box Sync/bpd_rest/"); basedir <- getwd()
+setwd("/gpfs/group/mnh5174/default/Michael/bpd_rest"); basedir <- getwd()
 #initialize the graph analysis pipeline (includes sourcing pipeline inputs, creating graphs, thresholding, binarization, community assignment, and calculation and reduction of global and nodal graph metrics)
 
 source("scripts/setup_globals.R")
 
 #specify pipeline inputs.leave blank for defaults, consult with function for deviations from default#RIDGE
 inputs <- specify_inputs(thresh_weighted = "binary", 
-                         conn_method = "cor.shrink",
+                         conn_method = "ridge.net_partial",
                          fc_out_rm = FALSE, 
                          preproc_pipeline = "nosmooth_aroma_bp_nonaggr",
                          reducemetrics =  c("degree", "page.rank", "part.coeff", "eigen.cent", "gateway.coeff.btw", "gateway.coeff.degree", "within.module.deg"),
-                         rs_desired_log = logspace(log10(.6), log10(.8), 20)) 
+                         rs_desired_log = logspace(log10(.01), log10(.024), 20)) 
+#                         rs_desired_log = logspace(log10(.5), log10(.75), 20)) 
+
 #PEARSON
 #inputs <- specify_inputs(thresh_weighted = "binary", fc_out_rm = FALSE, conn_method = "pearson", rs_desired_log = logspace(log10(.2), log10(.4), 20)) #leave blank for defaults, consult with function for deviations from default
+
 for(i in 1:length(inputs)) assign(names(inputs)[i], inputs[[i]]) #assign objects to names of input list elements
 
 ##if you want to add on an additional tag
@@ -33,27 +36,37 @@ subj_info <- get_subj_info(adjmats_base, parcellation, conn_method, preproc_pipe
 ##for ridge remove the short euclidean distance removal
 allmats <- import_adj_mats(subj_info, rmShort = rmShort, allowCache=TRUE)
 
+#look at cutoffs in FC distribution
+fcquantiles <- t(apply(allmats, 1, function(g) {
+  #return(summary(g[lower.tri(g)]))
+  return(quantile(g[lower.tri(g)], c(.5, .7, .75, .8, .85, .9, .92, .94, .96, .98, .99, 1)))
+}))
+
+apply(fcquantiles, 2, summary)
+
 # hist(allmats_)
 # Setup Graphs and Assign Community Structure -----------------------------
 
 #obtain weighted, non-negative weighted, proportional and fc density-thresholded binary, and mean aggregate graphs
-gobjs <- setup_graphs(allmats, file_tag = file_tag, file_tag_nothresh = file_tag_nothresh, fc_out_rm = fc_out_rm, allowCache=TRUE)
+gobjs <- setup_graphs(allmats, file_tag = file_tag, file_tag_nothresh = file_tag_nothresh, fc_out_rm = fc_out_rm, allowCache=FALSE)
 
 if(!conn_method == "dens.clime_partial"){
   #gobjs contains a list of weighted, non-negative weighted, and binary matrices
   #pull these out into single variables for simplicity
-  allg <- gobjs$allg; allg_noneg <- gobjs$allg_noneg; allg_density <- gobjs$allg_density; agg.g <- gobjs$agg.g; allg_density_fc <- gobjs$allg_density_fc; agg.g.controls <- gobjs$agg.g.controls; agg.g.bpd <- gobjs$agg.g.bpd
+  allg <- gobjs$allg; allg_noneg <- gobjs$allg_noneg; allg_density <- gobjs$allg_density; agg.g <- gobjs$agg.g; allg_density_fc <- gobjs$allg_density_fc
+  agg.g.controls <- gobjs$agg.g.controls; agg.g.bpd <- gobjs$agg.g.bpd
 } else {
   #In the case of dens.clime
   allg_density <- gobjs[[1]] #list of weighted graphs. Based on proportional thresholding
   allg_noneg <- gobjs[[2]] # list of weighted non-negative graphs. subjs X densities
   agg.g <- gobjs[[3]] # single aggregate mean graph from ridge 
 }
+
 rm(gobjs) #remove from environment to save memory
 
 
 #community assignment
-if(use.yeo == 1){ 
+if (use.yeo == 1) { 
   yeo7 <- yeo7_community(agg.g)
   
   allg_noneg <- assign_communities(allg_noneg, yeo7, "community")
@@ -73,21 +86,22 @@ if(use.yeo == 1){
 
 # Compute Thresholded Graph Metrics (nodal)  --------------------------------------------
 
-if(!conn_method == "dens.clime_partial"){
-  if(thresh == "fc"){
-    #compute global metrics on BINARY density-thresholded graphs
+if (!conn_method == "dens.clime_partial") {
+  if (thresh == "fc") {
+    #compute global metrics on BINARY fc-thresholded graphs
     globalmetrics_dthresh <- compute_global_metrics(allg_density_fc, allowCache=FALSE, community_attr="community") #community_attr determines how global/nodal statistics that include community are computed
-    #compute nodal metrics on BINARY density-thresholded graphs
+    #compute nodal metrics on BINARY fc-thresholded graphs
     nodalmetrics_dthresh <- compute_nodal_metrics(allg_density_fc, allowCache=FALSE, community_attr="community") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
     
-    #nodalmetrics_dthresh <- get(load("/Users/nth7/Box Sync/DEPENd/Projects/RS_BPD_graph/bpd_rest/cache/threshnodalmetrics_transformed_blahschaefer422_nosmooth_aroma_bp_nonaggr_ridge.net_partial_fc_binary_all.RData"))
-    
-    nodalmetrics_dthresh$allmetrics.nodal.df$density <- rep(rep(rs_desired_log, each = 422),length(allg)) 
+    #nodalmetrics_dthresh$allmetrics.nodal.df$density <- rep(rep(rs_desired_log, each = 422),length(allg)) #should be superseded by adding this attribute to each graph in compute_nodal_metrics
     allmetrics.nodal.df <- nodalmetrics_dthresh$allmetrics.nodal.df
     
     globalmetrics_dthresh.df <- globalmetrics_dthresh$allmetrics.global.df
     globalmetrics_dthresh.df$density <- rep(rs_desired_log, length(allg))
-  } else{
+
+    #what mean densities did we hit with FC thresholding?
+    globalmetrics_dthresh.df %>% group_by(wthresh) %>% dplyr::summarize(mean(edge_density), median(edge_density))
+  } else {
     globalmetrics_dthresh <- compute_global_metrics(allg_density, allowCache=TRUE, community_attr="community") #community_attr determines how global/nodal statistics that include community are computed
     #compute nodal metrics on BINARY density-thresholded graphs
     nodalmetrics_dthresh <- compute_nodal_metrics(allg_density, allowCache=TRUE, community_attr="community") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
@@ -100,13 +114,13 @@ if(!conn_method == "dens.clime_partial"){
   nodalmetrics_dthresh <- compute_nodal_metrics(allg_density, allowCache=TRUE, community_attr="community", weighted = FALSE) 
 }
 
-qplot((allmetrics.nodal.df$eigen.cent))
-
+#couple of sanity checks
+qplot(allmetrics.nodal.df$eigen.cent)
+ggplot(allmetrics.nodal.df, aes(x=degree)) + geom_histogram() + facet_wrap(~wthresh)
 
 # Transform the nodal graph metrics ---------------------------------------
-source(paste0(basedir, "/scripts/transform_graph_metrics.R"))
+source(file.path(basedir, "scripts", "transform_graph_metrics.R"))
 # source(paste0(basedir, "/scripts/transform_graph_metrics_10rs.R"))
-
 
 # Data reduce Binary(FA/PCA) ----------------------------------------------------
 

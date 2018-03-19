@@ -37,14 +37,15 @@ compute_global_metrics <- function(graphs, ncpus=4, allowCache=TRUE, community_a
     clusterobj <- makeSOCKcluster(ncpus)
     registerDoSNOW(clusterobj)
     on.exit(try(stopCluster(clusterobj))) #shutdown cluster when function exits (either normally or crash)
-    # browser()
+
     ##compute global metrics 
     allmetrics.global <- foreach(subj=graphs, .packages = c("igraph", "brainGraph"), .export=c("calcGraph_global", "densities_desired", "rs_desired_log", "thresh")) %dopar% {
       #for (subj in graphs) { #put here for more fine-grained debugging
       dl <- lapply(subj, function(dgraph) {
         glist <- calcGraph_global(dgraph, community_attr=community_attr) #this will work for both weighted and unweighted graphs, right now modularity weighted components set to NULL but can change if desired. 
         glist$id <- dgraph$id #copy attributes for flattening to data.frame
-        glist$density <- dgraph$density
+        glist$wthresh <- dgraph$wthresh
+        glist$target_density <- dgraph$target_density
         return(glist)
       })
       
@@ -58,7 +59,7 @@ compute_global_metrics <- function(graphs, ncpus=4, allowCache=TRUE, community_a
         as.data.frame(dens) #should just be a list
       }))
     }))
-    
+
     row.names(allmetrics.global.df) <- NULL #remove goofy d0.01 rownames
     save(file=expectFile, allmetrics.global, allmetrics.global.df)
   }

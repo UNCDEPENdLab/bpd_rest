@@ -36,8 +36,14 @@ threshold_glist <- function(glist, thresholds, method="density", ncores=4, ...) 
   #     }, mc.cores=ncores)
   #   
   # }, glist)
-  # 
-  names(allg_thresh) <- as.character(paste(method, thresholds, sep="_"))
+  #
+
+  allg_thresh <- lapply(allg_thresh, function(sublist) {
+    names(sublist) <- as.character(paste(method, thresholds, sep="_"))
+    return(sublist)
+  })
+  
+  names(allg_thresh) <- names(glist)
   return(allg_thresh)
 }
 

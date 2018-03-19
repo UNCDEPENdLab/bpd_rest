@@ -5,9 +5,7 @@ setup_graphs <- function(adjmats_all, aggfun = NULL, agg.rm.neg = TRUE, allowCac
   suppressMessages(require(igraph))
   suppressMessages(require(foreach))
   suppressMessages(require(doSNOW))
-  
-  
-  
+
   if(conn_method == "dens.clime_partial"){stopifnot(length(atlas$name) == length(adjmats_all[[1]][1,1,]))} else{
     stopifnot(length(atlas$name) == dim(adjmats_all)[2]) #number of nodes must match between atlas and adjmats
   }
@@ -59,8 +57,7 @@ setup_graphs <- function(adjmats_all, aggfun = NULL, agg.rm.neg = TRUE, allowCac
       message("Loading aggregated ridge graph (DEFAULT MEAN + NO NEG) from file: ", ridge.mean)
       load(ridge.mean)
     } else {message("no agg.g to pull")}
-    
-    
+        
   } else {
     
     ##create graph objects if inputted adjmats_all file is not a list of dens weighted graphs
@@ -84,7 +81,6 @@ setup_graphs <- function(adjmats_all, aggfun = NULL, agg.rm.neg = TRUE, allowCac
       save(file=expectFile, allg) #save cache
       
     }
-    # Remove Negative Edges -----------------------------------------------
     
     #### Setup weighted graphs, removing negative edges
     expectFile <- file.path(basedir, "cache", paste0("weightedgraphsnoneg_", file_tag_nothresh, ".RData"))
@@ -95,11 +91,8 @@ setup_graphs <- function(adjmats_all, aggfun = NULL, agg.rm.neg = TRUE, allowCac
       ##remove negative correlations between nodes, if this is run on pearson, the number of edges remaining will be different across subjs 
       allg_noneg <- lapply(allg, function(g) { delete.edges(g, which(E(g)$weight < 0)) })
       save(file=expectFile, allg_noneg) #save cache
-    }
+    }    
     
-    
-    # Remove Positive Edges -----------------------------------------------
-    # browser()
     #### Setup weighted graphs, removing negative edges
     expectFile <- file.path(basedir, "cache", paste0("weightedgraphsnopos_", file_tag_nothresh, ".RData"))
     if (file.exists(expectFile) && allowCache==TRUE) {
@@ -114,9 +107,7 @@ setup_graphs <- function(adjmats_all, aggfun = NULL, agg.rm.neg = TRUE, allowCac
       save(file=expectFile, allg_nopos) #save cache
     }
     
-  
     # REMOVE FC OUTLIERS (2 of them in Ridge) ---------------------------------
-    
     if(fc_out_rm == 1){
 
       subjs_outliers <- get_meanfc_outliers(allg_noneg)
@@ -147,55 +138,54 @@ setup_graphs <- function(adjmats_all, aggfun = NULL, agg.rm.neg = TRUE, allowCac
     }
     
     # Proportional Thresholding -----------------------------------------------
+    if(fc_out_rm == 1){
+      expectFile <- file.path(basedir, "cache", paste0("dthreshgraphs_", file_tag, "_out_rm.RData"))
+    } else {
+      expectFile <- file.path(basedir, "cache", paste0("dthreshgraphs_", file_tag, ".RData"))
+    }
     
-  if(fc_out_rm == 1){
-  expectFile <- file.path(basedir, "cache", paste0("dthreshgraphs_", file_tag, "_out_rm.RData"))
-  } else {expectFile <- file.path(basedir, "cache", paste0("dthreshgraphs_", file_tag, "_all.RData"))}
-  
     if (file.exists(expectFile) && allowCache==TRUE) {
       message("Loading proportional density-thresholded graph objects from file: ", expectFile)
       load(expectFile)
     } else {
       
-      if(thresh_weighted == "binary"){
+      if(thresh_weighted == "binary") {
         allg_density <- threshold_glist(allg_noneg, densities_desired, method="density", ncores=1)
-      } else {allg_density <- threshold_glist(allg_noneg, rs_desired_log, method="density", rmweights = FALSE, ncores=1)}
-      
+      } else {
+        allg_density <- threshold_glist(allg_noneg, densities_desired, method="density", rmweights = FALSE, ncores=1)
+      }
       
       #each element of allg_density is a list of 20 binary graphs for that subject at 1-20% density
       save(file=expectFile, allg_density)
     }
-    # FC threshold by density -------------------------------------------------
     
+    # Threshold by FC value -------------------------------------------------
     if(fc_out_rm == 1){
       expectFile <- file.path(basedir, "cache", paste0("dthreshgraphs_", file_tag, "_out_rm_fc.RData"))
       expectFile_neg <-file.path(basedir, "cache", paste0("dthreshgraphs_", file_tag, "_neg_out_rm_fc.RData"))
     } else {
-      expectFile <- file.path(basedir, "cache", paste0("dthreshgraphs_", file_tag, "_all_fc.RData"))
-      expectFile_neg <- file.path(basedir, "cache", paste0("dthreshgraphs_", file_tag, "_neg_all_fc.RData"))
-      }
-     
+      expectFile <- file.path(basedir, "cache", paste0("dthreshgraphs_", file_tag, "_fc.RData"))
+      expectFile_neg <- file.path(basedir, "cache", paste0("dthreshgraphs_", file_tag, "_neg_fc.RData"))
+    }
+    
     if (file.exists(expectFile) && allowCache==TRUE && file.exists(expectFile_neg)) {
       message("Loading FC thresholded graph objects from files: ", expectFile, " and ", expectFile_neg)
       load(expectFile)
       load(expectFile_neg)
-    } else {
-      
+    } else {      
       if(thresh_weighted == "binary"){
         allg_density_fc <- threshold_glist(allg_noneg, rs_desired_log, method="strength", ncores=1)
         allg_density_fc_neg <- threshold_glist(allg_nopos, rs_desired_log, method="strength", ncores=1)
       } else {
         allg_density_fc <- threshold_glist(allg_noneg, rs_desired_log, method="strength", rmweights = FALSE, ncores=1)
-        allg_density_fc_neg <- threshold_glist(allg_nopos, rs_desired_log, method="strength", rmweights = FALSE, ncores=1)
-        }
-      
+        allg_density_fc_neg <- threshold_glist(allg_nopos, rs_desired_log, method="strength", rmweights = FALSE, ncores=1) #don't you need different cutoffs for negative connections, which are weak?
+      }
       
       save(allg_density_fc, file = expectFile)
       save(allg_density_fc_neg, file = expectFile_neg)
     } 
     
   }
-  
   
   return(list(allg=allg, allg_noneg=allg_noneg, allg_density=allg_density, agg.g = agg.g, allg_density_fc = allg_density_fc, agg.g.bpd = agg.g.bpd, agg.g.controls = agg.g.controls, allg_nopos = allg_nopos, allg_density_fc_neg = allg_density_fc_neg))
 }
