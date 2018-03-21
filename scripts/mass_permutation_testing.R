@@ -1,21 +1,25 @@
 #mass permutation test
-setwd("~/Data_Analysis/bpd_rest")
+#setwd("~/Data_Analysis/bpd_rest")
+setwd("/gpfs/group/mnh5174/default/Michael/bpd_rest")
 library(tidyverse)
 library(doSNOW)
-s <- makeSOCKcluster(3)
+s <- makeSOCKcluster(8)
 registerDoSNOW(s)
 library(coin)
 #helper function to extract test statistic and pvalue
 coinstats <- function(m) { data.frame(mdiff=as.numeric(statistic(m, type="test")), pvalue=as.numeric(pvalue(m))) }
 
-load("/Users/mnh5174/Data_Analysis/bpd_rest/cache/threshnodalmetrics_schaefer422_nosmooth_aroma_bp_nonaggr_cor.shrink_fc_binary_all.RData")
+#load("/Users/mnh5174/Data_Analysis/bpd_rest/cache/threshnodalmetrics_schaefer422_nosmooth_aroma_bp_nonaggr_cor.shrink_fc_binary_all.RData")
+load("cache/threshnodalmetrics_schaefer422_nosmooth_aroma_bp_nonaggr_cor.shrink_fc_binary_all.RData")
 allmetrics.nodal.df$wthresh_char <- as.character(round(allmetrics.nodal.df$wthresh, 3))
 
-subj_info <- gdata::read.xls("/Users/mnh5174/Box Sync/DEPENd/Projects/SPECC/ID Management/SPECC_Participant_Info.xlsx")
+#subj_info <- gdata::read.xls("/Users/mnh5174/Box Sync/DEPENd/Projects/SPECC/ID Management/SPECC_Participant_Info.xlsx")
+subj_info <- read.csv("data/SPECC_Participant_Info.csv")
+
 allmetrics.nodal.df <- subj_info %>% select(SPECC_ID, BPD, AgeAtScan) %>% dplyr::rename(id=SPECC_ID) %>% inner_join(allmetrics.nodal.df) %>%
   mutate(BPD=factor(BPD, levels=c("0", "1"), labels=c("Control", "BPD")))
 
-lookup <- read.csv("/Users/mnh5174/Data_Analysis/bpd_rest/data/schaefer422_masterlookup.csv") %>%
+lookup <- read.csv("data/schaefer422_masterlookup.csv") %>%
   dplyr::mutate(vname=paste0("V", vname)) %>% dplyr::rename(node=vname) %>%
   mutate(tag=paste(node, anat_label, X7_networks, sep=" - "))
 
@@ -54,4 +58,5 @@ allmetrics_stats <- foreach(i=1:length(metrics), .packages=c("magrittr", "coin",
 
 stopCluster(s)
 
+names(allmetrics_stats) <- metrics
 save(allmetrics_stats, file="allperms.RData")

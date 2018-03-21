@@ -7,13 +7,19 @@ setwd("/gpfs/group/mnh5174/default/Michael/bpd_rest"); basedir <- getwd()
 source("scripts/setup_globals.R")
 
 #specify pipeline inputs.leave blank for defaults, consult with function for deviations from default#RIDGE
-inputs <- specify_inputs(thresh_weighted = "binary", 
-                         conn_method = "ridge.net_partial",
-                         fc_out_rm = FALSE, 
-                         preproc_pipeline = "nosmooth_aroma_bp_nonaggr",
-                         reducemetrics =  c("degree", "page.rank", "part.coeff", "eigen.cent", "gateway.coeff.btw", "gateway.coeff.degree", "within.module.deg"),
-                         rs_desired_log = logspace(log10(.01), log10(.024), 20)) 
-#                         rs_desired_log = logspace(log10(.5), log10(.75), 20)) 
+inputs <- specify_inputs(thresh_weighted = "binary",
+  parcellation = "schaefer421", 
+  #conn_method = "ridge.net_partial",
+  conn_method="cor.shrink",
+  fc_out_rm = FALSE,
+  #thresh="fc",
+  #thresh="prop",
+  #preproc_pipeline = "nosmooth_aroma_bp_nonaggr",
+  preproc_pipeline = "nosmooth_aroma_hp",
+  reducemetrics =  c("degree", "page.rank", "part.coeff", "eigen.cent", "gateway.coeff.btw", "gateway.coeff.degree", "within.module.deg"),
+  #rs_desired_log = logspace(log10(.01), log10(.024), 20))
+  rs_desired_log = logspace(log10(.51), log10(.68), 20)
+)
 
 #PEARSON
 #inputs <- specify_inputs(thresh_weighted = "binary", fc_out_rm = FALSE, conn_method = "pearson", rs_desired_log = logspace(log10(.2), log10(.4), 20)) #leave blank for defaults, consult with function for deviations from default
@@ -31,6 +37,34 @@ source("scripts/estimate_euclidean_distance.R") ##creates rmShort which will del
 
 #get_subj info, includes motion scrubbing procedure. 003BU and 008JH have had their data truncated to 300 volumes
 subj_info <- get_subj_info(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".txt.gz", fd.scrub = TRUE, allowCache = TRUE)
+
+#find masks
+subj_info$mask <- paste0(subj_info$mr_dir, "/mni_nosmooth_aroma_hp/rest1/subject_mask.nii.gz")
+
+fslcmd <- paste0("fslmerge -t mask_merge ", paste(subj_info$mask, collapse=" "))
+system(fslcmd)
+
+system("fslmaths mask_merge -Tmin intersection_mask")
+system("fslmaths mask_merge -Tmean intersection_proportion_present")
+
+
+#check ROI quality
+alldf <- c()
+for (f in subj_info$file) {
+  f <- sub("schaefer422_cor.shrink.txt.gz", "roidiagnostics_schaefer422.csv", f, fixed=TRUE)
+  alldf <- rbind(alldf,  read.csv(f))
+}
+
+alldf$subj <- sub(".*/MR_Proc/([^\\/]+)/.*$", "\\1", alldf$dataset, perl=TRUE)
+summaries <- alldf %>% group_by(maskval) %>% dplyr::summarize(m_masked=mean(prop_masked), m_missing=mean(prop_missing), min_nvox_good=min(nvox_good), min_nvox_masked=min(nvox_observed), sd_missing=sd(prop_missing))
+missdf <- dplyr::filter(summaries, m_missing > .02 | m_masked > .05) %>% print(n=Inf)
+
+alldf %>% group_by(subj) %>% dplyr::summarize(prop_present=sum(nvox_good)/sum(nvox_total)) %>% arrange(prop_present)
+write.csv(alldf, file="allroimissingness.csv", row.names=FALSE)
+write.csv(missdf, file="missing_voxels.csv", row.names=FALSE)
+
+#high missing
+dplyr::filter(summaries, m_missing > .02) %>% print(n=Inf)
 
 ##import raw adjacency matrices here (subj_info already contains the identified raw files)
 ##for ridge remove the short euclidean distance removal
@@ -89,9 +123,9 @@ if (use.yeo == 1) {
 if (!conn_method == "dens.clime_partial") {
   if (thresh == "fc") {
     #compute global metrics on BINARY fc-thresholded graphs
-    globalmetrics_dthresh <- compute_global_metrics(allg_density_fc, allowCache=FALSE, community_attr="community") #community_attr determines how global/nodal statistics that include community are computed
+    globalmetrics_dthresh <- compute_global_metrics(allg_density_fc, allowCache=TRUE, community_attr="community") #community_attr determines how global/nodal statistics that include community are computed
     #compute nodal metrics on BINARY fc-thresholded graphs
-    nodalmetrics_dthresh <- compute_nodal_metrics(allg_density_fc, allowCache=FALSE, community_attr="community") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
+    nodalmetrics_dthresh <- compute_nodal_metrics(allg_density_fc, allowCache=TRUE, community_attr="community") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
     
     #nodalmetrics_dthresh$allmetrics.nodal.df$density <- rep(rep(rs_desired_log, each = 422),length(allg)) #should be superseded by adding this attribute to each graph in compute_nodal_metrics
     allmetrics.nodal.df <- nodalmetrics_dthresh$allmetrics.nodal.df
@@ -105,8 +139,13 @@ if (!conn_method == "dens.clime_partial") {
     globalmetrics_dthresh <- compute_global_metrics(allg_density, allowCache=TRUE, community_attr="community") #community_attr determines how global/nodal statistics that include community are computed
     #compute nodal metrics on BINARY density-thresholded graphs
     nodalmetrics_dthresh <- compute_nodal_metrics(allg_density, allowCache=TRUE, community_attr="community") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
+
+    globalmetrics_dthresh.df <- globalmetrics_dthresh$allmetrics.global.df
+
+    #check that we hit the target
+    globalmetrics_dthresh.df %>% group_by(target_density) %>% dplyr::summarize(mean(edge_density), median(edge_density)) #yep
     
-    nodalmetrics_dthresh$allmetrics.nodal.df$density <- rep(rep(densities_desired, each = 422),length(allg)) 
+    #nodalmetrics_dthresh$allmetrics.nodal.df$density <- rep(rep(densities_desired, each = 422),length(allg)) 
     allmetrics.nodal.df <- nodalmetrics_dthresh$allmetrics.nodal.df
   }
 } else {
@@ -117,6 +156,7 @@ if (!conn_method == "dens.clime_partial") {
 #couple of sanity checks
 qplot(allmetrics.nodal.df$eigen.cent)
 ggplot(allmetrics.nodal.df, aes(x=degree)) + geom_histogram() + facet_wrap(~wthresh)
+#ggplot(allmetrics.nodal.df, aes(x=degree)) + geom_histogram() + facet_wrap(~target_density)
 
 # Transform the nodal graph metrics ---------------------------------------
 source(file.path(basedir, "scripts", "transform_graph_metrics.R"))
