@@ -7,8 +7,11 @@ setwd("/gpfs/group/mnh5174/default/Michael/bpd_rest"); basedir <- getwd()
 source("scripts/setup_globals.R")
 
 #specify pipeline inputs.leave blank for defaults, consult with function for deviations from default#RIDGE
-inputs <- specify_inputs(thresh_weighted = "binary",
+inputs <- specify_inputs(
+  nnodes=421,
   parcellation = "schaefer421", 
+  roiFile = file.path(basedir,  "data", "schaefer421_roiMat.txt"),
+  thresh_weighted = "binary",
   #conn_method = "ridge.net_partial",
   conn_method="cor.shrink",
   fc_out_rm = FALSE,
@@ -18,7 +21,8 @@ inputs <- specify_inputs(thresh_weighted = "binary",
   preproc_pipeline = "nosmooth_aroma_hp",
   reducemetrics =  c("degree", "page.rank", "part.coeff", "eigen.cent", "gateway.coeff.btw", "gateway.coeff.degree", "within.module.deg"),
   #rs_desired_log = logspace(log10(.01), log10(.024), 20))
-  rs_desired_log = logspace(log10(.51), log10(.68), 20)
+  #rs_desired_log = logspace(log10(.51), log10(.68), 20) #for cor.shrink on bp data
+  rs_desired_log = logspace(log10(.44), log10(.58), 20) #for cor.shrink on hp data
 )
 
 #PEARSON
@@ -32,43 +36,42 @@ for(i in 1:length(inputs)) assign(names(inputs)[i], inputs[[i]]) #assign objects
 
 source("scripts/estimate_euclidean_distance.R") ##creates rmShort which will delete edges close in euclidean distance
 
-
 # Subject Info and import adjmats -----------------------------------------
 
 #get_subj info, includes motion scrubbing procedure. 003BU and 008JH have had their data truncated to 300 volumes
-subj_info <- get_subj_info(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".txt.gz", fd.scrub = TRUE, allowCache = TRUE)
+subj_info <- get_subj_info(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".txt.gz", fd.scrub = TRUE, allowCache = FALSE)
 
 #find masks
-subj_info$mask <- paste0(subj_info$mr_dir, "/mni_nosmooth_aroma_hp/rest1/subject_mask.nii.gz")
+#subj_info$mask <- paste0(subj_info$mr_dir, "/mni_nosmooth_aroma_hp/rest1/subject_mask.nii.gz")
 
-fslcmd <- paste0("fslmerge -t mask_merge ", paste(subj_info$mask, collapse=" "))
-system(fslcmd)
+#fslcmd <- paste0("fslmerge -t mask_merge ", paste(subj_info$mask, collapse=" "))
+#system(fslcmd)
 
-system("fslmaths mask_merge -Tmin intersection_mask")
-system("fslmaths mask_merge -Tmean intersection_proportion_present")
-
+#system("fslmaths mask_merge -Tmin intersection_mask")
+#system("fslmaths mask_merge -Tmean intersection_proportion_present")
 
 #check ROI quality
 alldf <- c()
 for (f in subj_info$file) {
-  f <- sub("schaefer422_cor.shrink.txt.gz", "roidiagnostics_schaefer422.csv", f, fixed=TRUE)
+  f <- sub(paste0(parcellation, "_", conn_method, ".txt.gz"), paste0("roidiagnostics_", parcellation, ".csv"), f, fixed=TRUE)
   alldf <- rbind(alldf,  read.csv(f))
 }
 
 alldf$subj <- sub(".*/MR_Proc/([^\\/]+)/.*$", "\\1", alldf$dataset, perl=TRUE)
 summaries <- alldf %>% group_by(maskval) %>% dplyr::summarize(m_masked=mean(prop_masked), m_missing=mean(prop_missing), min_nvox_good=min(nvox_good), min_nvox_masked=min(nvox_observed), sd_missing=sd(prop_missing))
 missdf <- dplyr::filter(summaries, m_missing > .02 | m_masked > .05) %>% print(n=Inf)
+missdf <- dplyr::filter(summaries, m_missing > .02) %>% print(n=Inf)
 
 alldf %>% group_by(subj) %>% dplyr::summarize(prop_present=sum(nvox_good)/sum(nvox_total)) %>% arrange(prop_present)
-write.csv(alldf, file="allroimissingness.csv", row.names=FALSE)
-write.csv(missdf, file="missing_voxels.csv", row.names=FALSE)
+write.csv(alldf, file="allroimissingness_schaefer421_mask.csv.gz", row.names=FALSE)
+write.csv(missdf, file="missing_voxels_schaefer421_mask.csv", row.names=FALSE)
 
 #high missing
 dplyr::filter(summaries, m_missing > .02) %>% print(n=Inf)
 
 ##import raw adjacency matrices here (subj_info already contains the identified raw files)
 ##for ridge remove the short euclidean distance removal
-allmats <- import_adj_mats(subj_info, rmShort = rmShort, allowCache=TRUE)
+allmats <- import_adj_mats(subj_info, rmShort = rmShort, allowCache=FALSE)
 
 #look at cutoffs in FC distribution
 fcquantiles <- t(apply(allmats, 1, function(g) {
@@ -84,7 +87,7 @@ apply(fcquantiles, 2, summary)
 #obtain weighted, non-negative weighted, proportional and fc density-thresholded binary, and mean aggregate graphs
 gobjs <- setup_graphs(allmats, file_tag = file_tag, file_tag_nothresh = file_tag_nothresh, fc_out_rm = fc_out_rm, allowCache=FALSE)
 
-if(!conn_method == "dens.clime_partial"){
+if(!conn_method == "dens.clime_partial") {
   #gobjs contains a list of weighted, non-negative weighted, and binary matrices
   #pull these out into single variables for simplicity
   allg <- gobjs$allg; allg_noneg <- gobjs$allg_noneg; allg_density <- gobjs$allg_density; agg.g <- gobjs$agg.g; allg_density_fc <- gobjs$allg_density_fc
@@ -123,9 +126,9 @@ if (use.yeo == 1) {
 if (!conn_method == "dens.clime_partial") {
   if (thresh == "fc") {
     #compute global metrics on BINARY fc-thresholded graphs
-    globalmetrics_dthresh <- compute_global_metrics(allg_density_fc, allowCache=TRUE, community_attr="community") #community_attr determines how global/nodal statistics that include community are computed
+    globalmetrics_dthresh <- compute_global_metrics(allg_density_fc, allowCache=FALSE, community_attr="community") #community_attr determines how global/nodal statistics that include community are computed
     #compute nodal metrics on BINARY fc-thresholded graphs
-    nodalmetrics_dthresh <- compute_nodal_metrics(allg_density_fc, allowCache=TRUE, community_attr="community") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
+    nodalmetrics_dthresh <- compute_nodal_metrics(allg_density_fc, allowCache=FALSE, community_attr="community") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
     
     #nodalmetrics_dthresh$allmetrics.nodal.df$density <- rep(rep(rs_desired_log, each = 422),length(allg)) #should be superseded by adding this attribute to each graph in compute_nodal_metrics
     allmetrics.nodal.df <- nodalmetrics_dthresh$allmetrics.nodal.df
