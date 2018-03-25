@@ -1,9 +1,9 @@
-get_subj_info <- function(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".txt.gz", fd.scrub = TRUE, allowCache=TRUE) {
+get_subj_info <- function(adjmats_base, parcellation, conn_method, preproc_pipeline, add_tag = NULL, file_extension=".txt.gz", fd.scrub = TRUE, allowCache=TRUE) {
   ################################################################################
   #################read in demographic info and combine with proper files in correct directory
   
   stopifnot(file.exists(file.path(basedir, "cache")))
-  expectFile <- file.path(basedir, "cache", paste0("subjinfo_", parcellation, "_", preproc_pipeline, "_", conn_method, ".RData"))
+  expectFile <- file.path(basedir, "cache", paste0("subjinfo_", file_tag, ".RData"))
   if (file.exists(expectFile) && allowCache==TRUE) {
     message("Loading subject info from file: ", expectFile)
     load(expectFile)
@@ -21,7 +21,12 @@ get_subj_info <- function(adjmats_base, parcellation, conn_method, preproc_pipel
     
     if(conn_method != "dens.clime_partial"){
     #expects a base directory (e.g., "adjmats") with subdirectories of <parcellation>_<conn_method> (e.g., power269_pearson)
-    adjexpect <- file.path(adjmats_base, paste(parcellation, preproc_pipeline, conn_method, sep="_"))
+    if(is.null(add_tag)){
+      adjexpect <- file.path(adjmats_base, paste(parcellation, preproc_pipeline, conn_method, sep="_"))
+    } else {
+      #if additional file tags are included in arguments
+      adjexpect <- file.path(adjmats_base, paste(parcellation, preproc_pipeline, conn_method, add_tag, sep="_"))
+    }
     if (!file.exists(adjexpect)) { stop("Cannot find expected directory: ", adjexpect) } #check existence of expected directory
     
     #populate file field of subj info and verify file existence
@@ -43,6 +48,7 @@ get_subj_info <- function(adjmats_base, parcellation, conn_method, preproc_pipel
     if (fd.scrub == TRUE) {
       if(!dir.exists("/mnt/ics/SPECC")) { message("ICS folder not mounted, unable to read FD.txt files") }
       #NOTE: dir command leads to ICS directory, which needs to be mounted on your computer    
+      # browser()
       SPECC_rest <- filter_movement(SPECC_rest, "/mnt/ics", 0.5, .20, 10) #0.5mm FD threshold, 20% of volumes at that threshold, or any 10mm+ movement
     }
     
