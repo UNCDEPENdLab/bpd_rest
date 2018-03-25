@@ -24,9 +24,13 @@ for(i in 1:length(inputs)) assign(names(inputs)[i], inputs[[i]]) #assign objects
 # toanalyze_thresh <- get(load("/Users/nth7/Box Sync/DEPENd/Projects/RS_BPD_graph/bpd_rest/cache/toanalyze.fa.thresh_schaefer422_nosmooth_aroma_bp_nonaggr_ridge.net_partial_fc_binary_all.RData"))
 # for(i in 1:length(toanalyze_thresh)) assign(names(toanalyze_thresh)[i], toanalyze_thresh[[i]])
 
-load("toanalyze_cor.shrink_final_questionmark.RData")
-
-
+# load("toanalyze_cor.shrink_final_questionmark.RData")
+#march update with PCA
+toanalyze <- get(load("/Users/natehall/Box Sync/bpd_rest/cache_protected/scores_toanalyze_cor.shrink_mar2018.RData"))
+head(toanalyze)
+merge.bpdage <- subj_info %>% dplyr::select(SPECC_ID, BPD, AgeAtScan) %>% dplyr::rename(id=SPECC_ID, Age=AgeAtScan)
+toanalyze <- dplyr::left_join(toanalyze_comb, merge.bpdage, by = "id")
+head(toanalyze)
 toanalyze$Age_c <- toanalyze$Age - mean(toanalyze$Age)
 
 membership_df <- get(load("~/Box Sync/bpd_rest/cache_protected/membership_df.RData"))
@@ -36,7 +40,7 @@ membership_df <- membership_df %>%
 toanalyze <- left_join(toanalyze, membership_df, by="node") %>%
   mutate(BPD=factor(BPD, levels=0:1, labels=c("Control", "BPD")))
 
-
+head(toanalyze)
 
 # qplot(log(toanalyze$within.mod + 2))
 # 
@@ -48,14 +52,17 @@ toanalyze <- left_join(toanalyze, membership_df, by="node") %>%
 
 # check normality ---------------------------------------------------------
 
-# 
-# pdf("normality_check_hists.pdf", height = 8, width =11)
-# histogram( ~betweenness | node, toanalyze)
-# histogram( ~integration | node, toanalyze)
-# histogram( ~within.mod | node, toanalyze)
-# dev.off()
+
+pdf("normality_check_hists.pdf", height = 8, width =11)
+histogram( ~betweenness | node, toanalyze)
+histogram( ~integration | node, toanalyze)
+histogram( ~within.mod | node, toanalyze)
+dev.off()
+
+qplot(toanalyze$betweenness)
 
 # str(toanalyze)
+options(max.print=1000000)
 
 # analyze separate networks (from MH) -------------------------------------
 
@@ -147,7 +154,7 @@ dev.off()
 # run for loop over metrics with and without random slope estimated-----------------------------------------------
 
 
-sink("MLMresults.txt")
+sink("MLMresults_single_step_march2018.txt")
 #pdf("MLMplots.pdf", width=11, height=8)
 for (m in c("betweenness", "integration", "within.mod")) {
   df <- droplevels(toanalyze)
@@ -223,7 +230,7 @@ for (m in c("betweenness", "integration", "within.mod")) {
   
   ###simultaneous inference
   results <- lapply(cmat.matSeparate, function(effect) {
-    summary(glht(mod, linfct=effect), test=adjusted("single-step"))
+    summary(glht(mod, linfct=effect), test=adjusted("fdr"))
   })
   
   # results_uncorrected <- lapply(cmat.matSeparate, function(effect) {
@@ -231,7 +238,7 @@ for (m in c("betweenness", "integration", "within.mod")) {
   # })
   
   
-  cat("\n===========\nResults when including random slopes for membership and using simultaneous inference procedure from Hothorn 2008\n")
+  cat("\n===========\nResults when including random slopes for membership and using single step correction from Hothorn 2008\n")
   print(results)
   cat("\n===========\n")
   # cat("\n===========\nUncorrected\n")
@@ -241,28 +248,28 @@ for (m in c("betweenness", "integration", "within.mod")) {
 
 # remove random slope ----------------------------------------------------
 
-  
-  f2 <- as.formula(paste(m, "~ 1  + BPD*Age_c*membership + (1|node) + (1|id)"))# + BPD*I(Age^2)"))
-  #f <- as.formula(paste(m, "~ 1 + BPD*Agecat + (1|node) + (1|id)")) # + BPD*I(Age^2)
-  mod2 <- lmer(f2, df)
-  
-  cat("\nOmnibus\n")
-  print(car::Anova(mod))
-  results <- lapply(cmat.matSeparate, function(effect) {
-    summary(glht(mod2, linfct=effect), test=adjusted("single-step"))
-  })
-  
-  # results_uncorrected <- lapply(cmat.matSeparate, function(effect) {
+  # 
+  # f2 <- as.formula(paste(m, "~ 1  + BPD*Age_c*membership + (1|node) + (1|id)"))# + BPD*I(Age^2)"))
+  # #f <- as.formula(paste(m, "~ 1 + BPD*Agecat + (1|node) + (1|id)")) # + BPD*I(Age^2)
+  # mod2 <- lmer(f2, df)
+  # 
+  # cat("\nOmnibus\n")
+  # print(car::Anova(mod))
+  # results <- lapply(cmat.matSeparate, function(effect) {
   #   summary(glht(mod2, linfct=effect), test=adjusted("single-step"))
   # })
-  
-  cat("\n===========\nResults when removing random slopes for membership and using simultaneous inference procedure from Hothorn 2008\n")
-  print(results)
-  cat("\n===========\n")
-  # cat("\n===========\nUncorrected\n")
-  # print(results_uncorrected)
+  # 
+  # # results_uncorrected <- lapply(cmat.matSeparate, function(effect) {
+  # #   summary(glht(mod2, linfct=effect), test=adjusted("single-step"))
+  # # })
+  # 
+  # cat("\n===========\nResults when removing random slopes for membership and using fdr\n")
+  # print(results)
   # cat("\n===========\n")
-  
+  # # cat("\n===========\nUncorrected\n")
+  # # print(results_uncorrected)
+  # # cat("\n===========\n")
+  # 
   
 }
 sink()
@@ -274,7 +281,7 @@ sink()
 # forglht <- cmat@linfct
 # summary(glht(m1, linfct=forglht), test=adjusted("single-step"))
 
-sink("MLMresults_nodal_single_step.txt")
+sink("MLMresults_nodal_single_step_plus_fdr.txt")
 #pdf("MLMplots.pdf", width=11, height=8)
 for (m in c("betweenness", "integration", "within.mod")) {
   df <- droplevels(toanalyze)
@@ -362,12 +369,12 @@ for (m in c("betweenness", "integration", "within.mod")) {
   cat("\n===========\nResults for nodal analyses using simultaneous inference procedure from Hothorn 2008\n")
   print(results)
   cat("\n===========\n")
-  # cat("\n===========\nFDR corrected:\n")
-  # 
-  # 
-  # print(results_fdr)
-  # 
-  # cat("\n===========\n")
+  cat("\n===========\nFDR corrected:\n")
+
+
+  print(results_fdr)
+
+  cat("\n===========\n")
 
   
 }

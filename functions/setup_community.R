@@ -43,12 +43,11 @@ assign_communities <- function(allg, comm, attribute="community") {
 
 yeo7_community <- function(agg.g){
   #stopifnot(is.list(allg)), if interested we can input a list of single subject matrices 
-  membership.file <- file.path(getwd(), "data", "membership.yeo.csv")
+  membership.file <- file.path(getwd(), "data", paste0(parcellation, "_membership.yeo.csv"))
   stopifnot(file.exists(membership.file))
   membership.yeo <- as.numeric(as.matrix(read.csv(membership.file)))
-  names(membership.yeo) <- paste0("V", seq(1,422,1))
-  
-  
+  names(membership.yeo) <- atlas$name
+   
   yeo7_community <- make_clusters(agg.g, membership = membership.yeo, algorithm = "Yeo_etal_2011_7Networks")
   
   return(yeo7_community)

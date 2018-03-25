@@ -1,26 +1,23 @@
 
 # factor analysis from transformed metrics cor.shrink ---------------------
 
-nodalmetrics_df_test <- get(load("/Users/nth7/Box Sync/DEPENd/Projects/RS_BPD_graph/bpd_rest/cache/threshnodalmetrics_transformed_schaefer422_nosmooth_aroma_bp_nonaggr_cor.shrink_fc_binary_all.RData"))
+nodalmetrics_df <- get(load("/Users/natehall/Box Sync/bpd_rest/cache/threshnodalmetrics_transformed_MARCH_light_trans_schaefer422_nosmooth_aroma_bp_nonaggr_cor.shrink_fc_binary_all_update2018.RData"))
 
-fa.CFI<-function(x){
-  nombre<-paste(x,"CFI",sep = ".")
-  nombre<-
-    ((x$null.chisq-x$null.dof)-(x$STATISTIC-x$dof))/(x$null.chisq-x$null.dof)
-  return(nombre)
-}
+#untransformed
+#nodalmetrics_df <- allmetrics.nodal.df
 
-anyNA(nodalmetrics_df)
 
-# head(dplyr::filter(nodalmetrics_df, density == 0.75))
-# anyNA(nodalmetrics_df$part.coeff)
 
 nodalmetrics_df[is.na(nodalmetrics_df)] <- 0
+metrics.raw <- nodalmetrics_df %>% dplyr::select(id, node, wthresh, one_of(reducemetrics)) %>%
+   gather(key="variable", value="value", -id, -node, -wthresh)
 
-metrics.raw <- nodalmetrics_df %>% dplyr::select(id, node, density, one_of(reducemetrics)) %>%
-  filter(density > den) %>% gather(key="variable", value="value", -id, -node, -density)
 #recast for FA such that column names represent a metrics at a given density (e.g., 0.05_between.module.deg.zscore)
-metrics.raw_fa <- dcast(metrics.raw, id + node ~ density + variable, value.var = "value")
+metrics.raw_fa <- dcast(metrics.raw, id + node ~ wthresh + variable, value.var = "value")
+#convert non-finite values to 0
+is.na(metrics.raw_fa)<-sapply(metrics.raw_fa, is.infinite)
+metrics.raw_fa[is.na(metrics.raw_fa)]<-0
+
 toanalyze <- dplyr::select(metrics.raw_fa, id, node)
 
 
@@ -62,19 +59,19 @@ toanalyze <- dplyr::left_join(toanalyze, merge.bpdage, by = "id")
 
 #####retain for analysis, 4 factors shows imporvements in model fit with low factor loadings on factor 4
 #pcaout <- pca(dplyr::select(metrics.raw_fa, -id, -node), nfactors = 3,  missing = TRUE, rotate = "promax")#, scores = "Bartlett")
-faout <- fa(dplyr::select(metrics.raw_fa, -id, -node), nfactors = 3,  missing = TRUE, rotate = "promax")#, scores = "Bartlett")
-summary <- summary(faout)
-CFI <- fa.CFI(faout)
+faout <- fa(dplyr::select(metrics.raw_fa, -id, -node), nfactors = 3, rotate = "oblimin", fm = "pa")#, scores = "Bartlett")
+# summary <- summary(faout)
+# CFI <- fa.CFI(faout)
 fasolution <- data.frame(faout$scores)
-names(fasolution) <- c("central","integration", "within.mod")
+names(fasolution) <- c("integration", "within.mod", "betweenness")
 toanalyze_comb <- cbind(toanalyze, fasolution)
 
-head(toanalyze_comb)
+# head(toanalyze_comb)
 
 
-vss.out <- vss(dplyr::select(metrics.raw_fa, -id, -node), n = 3)
+# vss.out <- vss(dplyr::select(metrics.raw_fa, -id, -node), n = 3)
 
-CFI <- rbind(CFI, SRMR = vss.out[["vss.stats"]]$SRMR[3])
+# CFI <- rbind(CFI, SRMR = vss.out[["vss.stats"]]$SRMR[3])
 
 
 
@@ -85,28 +82,6 @@ merge.bpdage <- subj_info %>% dplyr::select(SPECC_ID, BPD, AgeAtScan) %>% dplyr:
 
 toanalyze <- dplyr::left_join(toanalyze_comb, merge.bpdage, by = "id")
 
-
-# testing -----------------------------------------------------------------
-
-
-# faout_2 <- fa(dplyr::select(metrics.raw_fa, -id, -node), nfactors = 2,  missing = TRUE, rotate = "varimax")
-# print(faout_2$loadings, cutoff = .3)
-# summary(faout_2)
-# fa.CFI(faout_2)
-# 
-# faout_3 <- fa(dplyr::select(metrics.raw_fa, -id, -node), nfactors = 3,  missing = TRUE, rotate = "promax")
-# print(faout_3$loadings, cutoff = .3)
-# summary(faout_3)
-# fa.CFI(faout_3)
-# 
-# faout_4 <- fa(dplyr::select(metrics.raw_fa, -id, -node), nfactors = 4,  missing = TRUE, rotate = "promax")
-# print(faout_4$loadings, cutoff = .3)
-# summary(faout_4)
-# fa.CFI(faout_4)
-# 
-# 
-# faout_5 <- fa(dplyr::select(metrics.raw_fa, -id, -node), nfactors = 5,  missing = TRUE, rotate = "promax")
-# print(faout_4$loadings, cutoff = .3)
-# summary(faout_4)
-# fa.CFI(faout_4)
-# 
+toanalyze_melt <- melt(toanalyze, id.vars = c("id", "node", "BPD", "Age"))
+head(toanalyze_melt)
+ggplot(toanalyze_melt, aes(x=value)) + geom_histogram() + facet_wrap(~variable, scales = "free") 

@@ -1,24 +1,7 @@
 # # Transform nodal metrics for input to FA ---------------------------------
-# 
-# ##to initialize globals:
-# ##########
-# setwd("~/Box Sync/DEPENd/Projects/RS_BPD_graph/bpd_rest/"); basedir <- getwd()
-# #initialize the graph analysis pipeline (includes sourcing pipeline inputs, creating graphs, thresholding, binarization, community assignment, and calculation and reduction of global and nodal graph metrics)
-# 
-# source("scripts/setup_globals.R")
-# #RIDGE
-# inputs <- specify_inputs(thresh_weighted = "binary", fc_out_rm = FALSE, preproc_pipeline = "nosmooth_aroma_bp_nonaggr") #leave blank for defaults, consult with function for deviations from default
-# #PEARSON
-# #inputs <- specify_inputs(thresh_weighted = "binary", fc_out_rm = FALSE, conn_method = "pearson", rs_desired_log = logspace(log10(.2), log10(.4), 20)) #leave blank for defaults, consult with function for deviations from default
-# for(i in 1:length(inputs)) assign(names(inputs)[i], inputs[[i]]) #assign objects to names of input list elements
-# ##########
-# 
 
-trans.file <- paste0(basedir, "/cache/threshnodalmetrics_transformed_2_27_18_", file_tag, ".RData")
-# if(file.exists(trans.file)){
-#   load(trans.file)
-#   message("Loaded transformed graph metrics from: ", trans.file )
-# } else{
+trans.file <- paste0(basedir, "/cache/threshnodalmetrics_transformed_MARCH_light_trans_", file_tag, ".RData")
+
 library("car")
 library("MASS")
 
@@ -27,80 +10,29 @@ library("MASS")
 # load(metrics.file)
 
 #bc for some reason, densities are not stored
-allmetrics.nodal.df$density <- rep(rep(rs_desired_log, each = 422),length(as.character(unique(allmetrics.nodal.df$id)))) 
+#allmetrics.nodal.df$density <- rep(rep(rs_desired_log, each = 422),length(as.character(unique(allmetrics.nodal.df$id)))) 
 
-
+#qplot(allmetrics.nodal.df.trans$closeness)
+# qplot(allmetrics.nodal.df$part.coeff, binwidth = .01)
+# BoxCox_extract((allmetrics.nodal.df$within.module.deg + 1), lambdas = seq(-10,10,.1))
 
 allmetrics.nodal.df.trans <- allmetrics.nodal.df
 
-allmetrics.nodal.df.trans$degree <- sqrt(allmetrics.nodal.df$degree + 1)
+allmetrics.nodal.df.trans$degree <- log(allmetrics.nodal.df$degree)
 #allmetrics.nodal.df.trans$eigen.cent <- Winsorize(allmetrics.nodal.df.trans$eigen.cent, minval = quantile(allmetrics.nodal.df.trans$eigen.cent, .001), maxval = quantile(allmetrics.nodal.df.trans$degree, .999))
-allmetrics.nodal.df.trans$betweenness.node <- log((allmetrics.nodal.df$betweenness.node+1))
-allmetrics.nodal.df.trans$page.rank <- qplot(sqrt(Winsorize(allmetrics.nodal.df.trans$page.rank, minval = quantile(allmetrics.nodal.df.trans$page.rank, .001), maxval = quantile(allmetrics.nodal.df.trans$page.rank, .999))))
-#allmetrics.nodal.df.trans$leverage.cent <- Winsorize(allmetrics.nodal.df.trans$leverage.cent, minval = quantile(allmetrics.nodal.df.trans$leverage.cent, .005, na.rm = TRUE), maxval = quantile(allmetrics.nodal.df.trans$leverage.cent, .999, na.rm = TRUE))
-#within-mod is okay for now
-
-# range(allmetrics.nodal.df.trans$betweenness.node)
-# range(Winsorize(allmetrics.nodal.df.trans$betweenness.node,
-#                 minval = quantile(allmetrics.nodal.df.trans$betweenness.node, .01, na.rm = TRUE),
-#                 maxval = quantile(allmetrics.nodal.df.trans$betweenness.node, .99, na.rm = TRUE)))
-#qplot(sqrt(allmetrics.nodal.df$degree + 1))
-###Use box-cox transform on more heavily skewed metrics
-
-##tiny function to test a range of lambdas, extract the lambda leading to the highest log-likelihood and transform the data
-BoxCox_extract <- function(data, lambdas, plot = TRUE){
-  Box <- boxcox(data ~ 1, lambda = lambdas)
-  Cox = data.frame(Box$x, Box$y)            # Create a data frame with the results
-  
-  Cox2 = Cox[with(Cox, order(-Cox$Box.y)),] # Order the new data frame by decreasing y
-  Cox2[1,]    #display lambda with highest log-likelihood
-  lambda = Cox2[1, "Box.x"] #extract lambda
-  
-  transformed <- (data ^lambda -1)/lambda
-  
-  if(plot) {
-    before <- qplot(data)
-    print(before)
-    
-    x <- qplot(transformed)
-    print(x)
-  }
-  return(transformed)
-}
-#BoxCox_extract((allmetrics.nodal.df$degree + 1), seq(-2,10,.1))
-# #allmetrics.nodal.df.trans$leverage.cent <-  BoxCox_extract((Winsorize(allmetrics.nodal.df.trans$leverage.cent, 
-#                           minval = quantile(allmetrics.nodal.df.trans$leverage.cent, .005, 
-#                                             na.rm = TRUE), 
-#                           maxval = quantile(allmetrics.nodal.df.trans$leverage.cent, .999, 
-#                                             na.rm = TRUE)) +1), 
-#                seq(-4,7,.1))
-
-# BoxCox_extract(allmetrics.nodal.df$eigen.cent +1, seq(-10,15,.1))
-
-# allmetrics.nodal.df.trans$degree <- BoxCox_extract(allmetrics.nodal.df$degree +1, seq(-1,5,.1))
-# qplot(all)
-
-part.coeff <- Winsorize(allmetrics.nodal.df.trans$part.coeff, minval = quantile(allmetrics.nodal.df.trans$part.coeff, .005, na.rm = TRUE), maxval = quantile(allmetrics.nodal.df.trans$part.coeff, .999, na.rm = TRUE)) + 4
-
-allmetrics.nodal.df.trans$part.coeff <- BoxCox_extract(part.coeff, seq(5,20,.1))
-
-##gateway coefficient
-gateway.btw <- Winsorize(allmetrics.nodal.df.trans$gateway.coeff.btw, minval = quantile(allmetrics.nodal.df.trans$gateway.coeff.btw, .005, na.rm = TRUE), maxval = quantile(allmetrics.nodal.df.trans$gateway.coeff.btw, .999, na.rm = TRUE)) + 5
-
-allmetrics.nodal.df.trans$gateway.coeff.btw <- BoxCox_extract(gateway.btw, seq(-3,25,.1))
-
-#based on degree
-gateway.degree <- Winsorize(allmetrics.nodal.df.trans$gateway.coeff.degree, minval = quantile(allmetrics.nodal.df.trans$gateway.coeff.degree, .005, na.rm = TRUE), maxval = quantile(allmetrics.nodal.df.trans$gateway.coeff.degree, .999, na.rm = TRUE)) + 5
-
-allmetrics.nodal.df.trans$gateway.coeff.degree <- BoxCox_extract(gateway.degree, seq(-3,25,.1))
-
-
-allmetrics.nodal.df.trans$within.module.deg <- BoxCox_extract(allmetrics.nodal.df.trans$within.module.deg + 4, seq (-1,15,.1))
+allmetrics.nodal.df.trans$closeness <- log(allmetrics.nodal.df$closeness)
+allmetrics.nodal.df.trans$closeness <- Winsorize(allmetrics.nodal.df.trans$closeness, minval = quantile(allmetrics.nodal.df.trans$closeness, .05), maxval = quantile(allmetrics.nodal.df.trans$closeness, .99))
+allmetrics.nodal.df.trans$betweenness.node <- log((allmetrics.nodal.df$betweenness.node))
+#allmetrics.nodal.df.trans$page.rank <- BoxCox_extract(allmetrics.nodal.df$page.rank, lambdas = seq(-10,10,.1))
+allmetrics.nodal.df.trans$within.module.deg <- sqrt(allmetrics.nodal.df$within.module.deg)
+# allmetrics.nodal.df.trans$part.coeff <- sqrt(allmetrics.nodal.df$part.coeff + 1)
+# allmetrics.nodal.df.trans$gateway.coeff.btw <- sqrt(allmetrics.nodal.df$gateway.coeff.btw + 1)
+# allmetrics.nodal.df.trans$gateway.coeff.degree <- sqrt(allmetrics.nodal.df$gateway.coeff.degree + 1)
 
 
 ##just pull the metrics we are interested in and plot distributions
-allmetrics_raw <- allmetrics.nodal.df.trans %>% dplyr::select(degree, eigen.cent, closeness, betweenness.node, page.rank, leverage.cent, within.module.deg,
-                                                              part.coeff, gateway.coeff.btw, gateway.coeff.degree)
+allmetrics_raw <- allmetrics.nodal.df.trans %>% dplyr::select(degree, eigen.cent, closeness, betweenness.node, within.module.deg,page.rank,
+                                                              part.coeff, gateway.coeff.btw, gateway.coeff.degree, leverage.cent, local.clustering)
 
 for(metric in 1:length(colnames(allmetrics_raw))){
   this.metric <- data.frame(allmetrics_raw[,metric])
@@ -111,6 +43,3 @@ for(metric in 1:length(colnames(allmetrics_raw))){
 
 
 save(allmetrics.nodal.df.trans, file = trans.file)
-# 
-# message("Saved transformed graph metrics to: ", trans.file )
-# }

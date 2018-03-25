@@ -41,13 +41,12 @@ import_adj_mats <- function(subj_info, allowCache=TRUE, rmShort=NULL, densities_
 
     for (f in 1:nrow(subj_info)) {
       if(conn_method == "dens.clime_partial_plateau"){
-        
-        x <- load(file = subj_info[f, "file"])
-        
-      } else{
+        x <- load(file = subj_info[f, "file"])        
+      } else {
         cat("Reading file:", as.character(subj_info[f,"file"]), "\n")
-        m <- as.matrix(read.table(as.character(subj_info[f,"file"]), sep=sep, header=FALSE))}
-        
+        m <- as.matrix(read.table(as.character(subj_info[f,"file"]), sep=sep, header=TRUE))
+      }
+      
       allmats[f,,] <- m
       }
     }

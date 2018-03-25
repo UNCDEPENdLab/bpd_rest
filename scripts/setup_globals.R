@@ -12,8 +12,8 @@ if(!exists("basedir")) {
 
 
 suppressMessages(library(igraph))
-suppressMessages(library(RGtk2))
-suppressMessages(library(brainGraph))
+#suppressMessages(library(RGtk2)) ##bc screw gtk 
+#suppressMessages(library(brainGraph))
 suppressMessages(library(ggplot2))
 suppressMessages(library(plyr))
 suppressMessages(library(dplyr))
@@ -77,3 +77,6 @@ source("functions/heatmap_fa.R")
 source("functions/reduce_centrality_global.R")
 source("functions/plot_nodes_by_network.R")
 source("functions/BoxCox_extract.R")
+source("functions/vertex_roles.R")
+source("functions/centr_lev.R")
+source("functions/fa.CFI.R")
