@@ -45,8 +45,8 @@ get_subj_info <- function(adjmats_base, parcellation, conn_method, preproc_pipel
 
     #scrub subjects with lots of movement
     if (fd.scrub == TRUE) {
-      #if(!dir.exists("/mnt/ics/SPECC")) { message("ICS folder not mounted, unable to read FD.txt files") }
-      if(!dir.exists("/gpfs/group/mnh5174/default")) { message("ICS folder not mounted, unable to read FD.txt files") }
+      if(!dir.exists("/mnt/ics/SPECC")) { message("ICS folder not mounted, unable to read FD.txt files") }
+      #if(!dir.exists("/gpfs/group/mnh5174/default")) { message("ICS folder not mounted, unable to read FD.txt files") }
       #NOTE: dir command leads to ICS directory, which needs to be mounted on your computer
       SPECC_rest <- filter_movement(SPECC_rest, "/mnt/ics", 0.5, .20, 10) #0.5mm FD threshold, 20% of volumes at that threshold, or any 10mm+ movement
       #SPECC_rest <- filter_movement(SPECC_rest, "/gpfs/group/mnh5174/default", 0.5, .20, 10) #0.5mm FD threshold, 20% of volumes at that threshold, or any 10mm+ movement

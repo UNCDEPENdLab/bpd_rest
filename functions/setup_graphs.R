@@ -19,10 +19,12 @@ setup_graphs <- function(adjmats_all, aggfun = NULL, agg.rm.neg = TRUE, allowCac
       
       allg <- lapply(adjmats_all, function(sub){
         sub_graphs <- apply(sub, 1, function(den){
+          
           g <- graph.adjacency(den, mode = "undirected", weighted = TRUE, diag = FALSE)
           V(g)$name <- atlas$name
           
-          g <- tagGraph(g, atlas) #populate all attributes from atlas to vertices
+          #g <- tagGraph(g, atlas) #populate all attributes from atlas to vertices
+          
           return(g)
         })
         return(sub_graphs)
@@ -71,8 +73,9 @@ setup_graphs <- function(adjmats_all, aggfun = NULL, agg.rm.neg = TRUE, allowCac
       allg <- apply(adjmats_all, 1, function(sub) {
         g <- graph.adjacency(sub, mode="undirected", weighted=TRUE, diag=FALSE)
         V(g)$name <- atlas$name
-        
+        browser()
         g <- tagGraph(g, atlas) #populate all attributes from atlas to vertices
+        set_brainGraph_attr(g)
         return(g)
       })
       

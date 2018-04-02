@@ -12,8 +12,7 @@ if(!exists("basedir")) {
 
 
 suppressMessages(library(igraph))
-#suppressMessages(library(RGtk2)) ##bc screw gtk 
-#suppressMessages(library(brainGraph))
+suppressMessages(library(brainGraph)) ##current version has been adapted to not allow GUI compatibility
 suppressMessages(library(ggplot2))
 suppressMessages(library(plyr))
 suppressMessages(library(dplyr))
@@ -35,6 +34,23 @@ suppressMessages(library(erer))
 suppressMessages(library(DescTools))
 suppressMessages(library(taRifx))
 suppressMessages(library(scatr))
+suppressMessages(library(doMC))
+suppressMessages(library(plyr))
+suppressMessages(library(gridExtra))
+suppressMessages(library(permute))
+
+
+
+# from BG manual, not sure if this will come up later ---------------------
+
+
+OS <- .Platform$OS.type
+
+num.cores <- detectCores()
+registerDoMC(num.cores)
+
+
+
 
 # Source Custom Functions -------------------------------------------------
 
@@ -80,3 +96,6 @@ source("functions/BoxCox_extract.R")
 source("functions/vertex_roles.R")
 source("functions/centr_lev.R")
 source("functions/fa.CFI.R")
+source("functions/format_to_bg.R")
+source("functions/mtpc_NH.R") #copied from github repo for debugging
+source("functions/brainGraph_GLM_NH.R") #copied from github repo for debugging
