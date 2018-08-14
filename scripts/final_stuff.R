@@ -1,7 +1,9 @@
 
 # Final Pipeline ----------------------------------------------------------
 
-setwd("/gpfs/group/mnh5174/default/Michael/bpd_rest"); basedir <- getwd()
+library("brainGraph")
+# setwd("/gpfs/group/mnh5174/default/Michael/bpd_rest"); basedir <- getwd()
+setwd("/mnt/ics/Michael/bpd_rest"); basedir <- getwd()
 #initialize the graph analysis pipeline (includes sourcing pipeline inputs, creating graphs, thresholding, binarization, community assignment, and calculation and reduction of global and nodal graph metrics)
 
 source("scripts/setup_globals.R")
@@ -15,14 +17,14 @@ inputs <- specify_inputs(
   #conn_method = "ridge.net_partial",
   conn_method="cor.shrink",
   fc_out_rm = FALSE,
-  #thresh="fc",
+  thresh="fc",
   #thresh="prop",
-  #preproc_pipeline = "nosmooth_aroma_bp_nonaggr",
+  # preproc_pipeline = "nosmooth_aroma_bp_nonaggr",
   preproc_pipeline = "nosmooth_aroma_hp",
   reducemetrics =  c("degree", "page.rank", "part.coeff", "eigen.cent", "gateway.coeff.btw", "gateway.coeff.degree", "within.module.deg"),
   #rs_desired_log = logspace(log10(.01), log10(.024), 20))
-  #rs_desired_log = logspace(log10(.51), log10(.68), 20) #for cor.shrink on bp data
-  rs_desired_log = logspace(log10(.44), log10(.58), 20) #for cor.shrink on hp data
+  rs_desired_log = logspace(log10(.51), log10(.68), 20) #for cor.shrink on bp data
+  #rs_desired_log = logspace(log10(.44), log10(.58), 20) #for cor.shrink on hp data
 )
 
 #PEARSON
@@ -39,35 +41,12 @@ source("scripts/estimate_euclidean_distance.R") ##creates rmShort which will del
 # Subject Info and import adjmats -----------------------------------------
 
 #get_subj info, includes motion scrubbing procedure. 003BU and 008JH have had their data truncated to 300 volumes
-subj_info <- get_subj_info(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".txt.gz", fd.scrub = TRUE, allowCache = FALSE)
+subj_info <- get_subj_info(adjmats_base, parcellation, conn_method, preproc_pipeline, file_extension=".txt.gz", fd.scrub = TRUE, allowCache = TRUE)
 
-#find masks
-#subj_info$mask <- paste0(subj_info$mr_dir, "/mni_nosmooth_aroma_hp/rest1/subject_mask.nii.gz")
+##if running on local machine
+subj_info$file <- gsub( subj_info$file, pattern = "/gpfs/group/mnh5174/default", replacement = "/mnt/ics" ,fixed = TRUE)
+subj_info$mr_dir <- gsub( subj_info$mr_dir, pattern = "/gpfs/group/mnh5174/default", replacement = "/mnt/ics" ,fixed = TRUE)
 
-#fslcmd <- paste0("fslmerge -t mask_merge ", paste(subj_info$mask, collapse=" "))
-#system(fslcmd)
-
-#system("fslmaths mask_merge -Tmin intersection_mask")
-#system("fslmaths mask_merge -Tmean intersection_proportion_present")
-
-#check ROI quality
-alldf <- c()
-for (f in subj_info$file) {
-  f <- sub(paste0(parcellation, "_", conn_method, ".txt.gz"), paste0("roidiagnostics_", parcellation, ".csv"), f, fixed=TRUE)
-  alldf <- rbind(alldf,  read.csv(f))
-}
-
-alldf$subj <- sub(".*/MR_Proc/([^\\/]+)/.*$", "\\1", alldf$dataset, perl=TRUE)
-summaries <- alldf %>% group_by(maskval) %>% dplyr::summarize(m_masked=mean(prop_masked), m_missing=mean(prop_missing), min_nvox_good=min(nvox_good), min_nvox_masked=min(nvox_observed), sd_missing=sd(prop_missing))
-missdf <- dplyr::filter(summaries, m_missing > .02 | m_masked > .05) %>% print(n=Inf)
-missdf <- dplyr::filter(summaries, m_missing > .02) %>% print(n=Inf)
-
-alldf %>% group_by(subj) %>% dplyr::summarize(prop_present=sum(nvox_good)/sum(nvox_total)) %>% arrange(prop_present)
-write.csv(alldf, file="allroimissingness_schaefer421_mask.csv.gz", row.names=FALSE)
-write.csv(missdf, file="missing_voxels_schaefer421_mask.csv", row.names=FALSE)
-
-#high missing
-dplyr::filter(summaries, m_missing > .02) %>% print(n=Inf)
 
 ##import raw adjacency matrices here (subj_info already contains the identified raw files)
 ##for ridge remove the short euclidean distance removal
@@ -139,9 +118,9 @@ if (!conn_method == "dens.clime_partial") {
     #what mean densities did we hit with FC thresholding?
     globalmetrics_dthresh.df %>% group_by(wthresh) %>% dplyr::summarize(mean(edge_density), median(edge_density))
   } else {
-    globalmetrics_dthresh <- compute_global_metrics(allg_density, allowCache=TRUE, community_attr="community") #community_attr determines how global/nodal statistics that include community are computed
+    globalmetrics_dthresh <- compute_global_metrics(allg_density, allowCache=FALSE, community_attr="community") #community_attr determines how global/nodal statistics that include community are computed
     #compute nodal metrics on BINARY density-thresholded graphs
-    nodalmetrics_dthresh <- compute_nodal_metrics(allg_density, allowCache=TRUE, community_attr="community") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
+    nodalmetrics_dthresh <- compute_nodal_metrics(allg_density, allowCache=FALSE, community_attr="community") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
 
     globalmetrics_dthresh.df <- globalmetrics_dthresh$allmetrics.global.df
 
