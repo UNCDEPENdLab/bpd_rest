@@ -31,7 +31,8 @@ suppressMessages(library(wle))
 suppressMessages(library(lsmeans))
 suppressMessages(library(pracma))
 suppressMessages(library(sjPlot))
-suppressMessages(library(erer))
+if(!file.exists("/gpfs/group/mnh5174/default")){suppressMessages(library(erer))}
+
 suppressMessages(library(DescTools))
 suppressMessages(library(taRifx))
 suppressMessages(library(scatr))
