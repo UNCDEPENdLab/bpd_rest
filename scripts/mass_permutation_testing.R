@@ -1,7 +1,7 @@
 #mass permutation test
 
 #setwd("~/Data_Analysis/bpd_rest")
-setwd("/gpfs/group/mnh5174/default/Michael/bpd_rest")
+#setwd("/gpfs/group/mnh5174/default/Michael/bpd_rest")
 library(tidyverse)
 #library(doSNOW)
 library(doParallel)
@@ -54,9 +54,9 @@ allmetrics.nodal.df$wthresh_char <- as.character(round(allmetrics.nodal.df$wthre
 #subj_info <- gdata::read.xls("/Users/mnh5174/Box Sync/DEPENd/Projects/SPECC/ID Management/SPECC_Participant_Info.xlsx")
 subj_info <- read.csv("data/SPECC_Participant_Info.csv")
 
-allmetrics.nodal.df <- subj_info %>% select(SPECC_ID, BPD, AgeAtScan) %>% dplyr::rename(id=SPECC_ID) %>% inner_join(allmetrics.nodal.df) %>%
+allmetrics.nodal.df <- subj_info %>% dplyr::select(SPECC_ID, BPD, AgeAtScan) %>% dplyr::rename(id=SPECC_ID) %>% inner_join(allmetrics.nodal.df) %>%
   mutate(BPD=factor(BPD, levels=c("0", "1"), labels=c("Control", "BPD")))
-
+str(allmetrics.nodal.df)
 ## lookup <- read.csv("data/schaefer422_masterlookup.csv") %>%
 ##   dplyr::mutate(vname=paste0("V", vname)) %>% dplyr::rename(node=vname) %>%
 ##   mutate(tag=paste(node, anat_label, X7_networks, sep=" - "))

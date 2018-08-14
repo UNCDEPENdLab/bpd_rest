@@ -11,7 +11,7 @@ source("scripts/setup_globals.R")
 #specify pipeline inputs.leave blank for defaults, consult with function for deviations from default#RIDGE
 inputs <- specify_inputs(
   nnodes=421,
-  parcellation = "schaefer421", 
+  parcellation = "schaefer421",
   roiFile = file.path(basedir,  "data", "schaefer421_roiMat.txt"),
   thresh_weighted = "binary",
   #conn_method = "ridge.net_partial",
@@ -32,9 +32,10 @@ inputs <- specify_inputs(
 
 for(i in 1:length(inputs)) assign(names(inputs)[i], inputs[[i]]) #assign objects to names of input list elements
 
-##if you want to add on an additional tag
-# file_tag <- paste0(file_tag, "_no_rmshort")
-# file_tag_nothresh <- paste0(file_tag_nothresh, "_no_rmshort")
+##if you want to add on an additional tag, make sure to check that this tag is relfected in dir structure
+add_tag <- "update2018"
+file_tag <- paste0(file_tag, "_", add_tag)
+file_tag_nothresh <- paste0(file_tag_nothresh, "_", add_tag)
 
 source("scripts/estimate_euclidean_distance.R") ##creates rmShort which will delete edges close in euclidean distance
 
@@ -47,10 +48,9 @@ subj_info <- get_subj_info(adjmats_base, parcellation, conn_method, preproc_pipe
 subj_info$file <- gsub( subj_info$file, pattern = "/gpfs/group/mnh5174/default", replacement = "/mnt/ics" ,fixed = TRUE)
 subj_info$mr_dir <- gsub( subj_info$mr_dir, pattern = "/gpfs/group/mnh5174/default", replacement = "/mnt/ics" ,fixed = TRUE)
 
-
 ##import raw adjacency matrices here (subj_info already contains the identified raw files)
 ##for ridge remove the short euclidean distance removal
-allmats <- import_adj_mats(subj_info, rmShort = rmShort, allowCache=FALSE)
+allmats <- import_adj_mats(subj_info, rmShort = rmShort, allowCache=TRUE)
 
 #look at cutoffs in FC distribution
 fcquantiles <- t(apply(allmats, 1, function(g) {
@@ -64,7 +64,7 @@ apply(fcquantiles, 2, summary)
 # Setup Graphs and Assign Community Structure -----------------------------
 
 #obtain weighted, non-negative weighted, proportional and fc density-thresholded binary, and mean aggregate graphs
-gobjs <- setup_graphs(allmats, file_tag = file_tag, file_tag_nothresh = file_tag_nothresh, fc_out_rm = fc_out_rm, allowCache=FALSE)
+gobjs <- setup_graphs(allmats, file_tag = file_tag, file_tag_nothresh = file_tag_nothresh, fc_out_rm = fc_out_rm, allowCache=TRUE)
 
 if(!conn_method == "dens.clime_partial") {
   #gobjs contains a list of weighted, non-negative weighted, and binary matrices
@@ -75,22 +75,22 @@ if(!conn_method == "dens.clime_partial") {
   #In the case of dens.clime
   allg_density <- gobjs[[1]] #list of weighted graphs. Based on proportional thresholding
   allg_noneg <- gobjs[[2]] # list of weighted non-negative graphs. subjs X densities
-  agg.g <- gobjs[[3]] # single aggregate mean graph from ridge 
+  agg.g <- gobjs[[3]] # single aggregate mean graph from ridge
 }
 
 rm(gobjs) #remove from environment to save memory
 
 
 #community assignment
-if (use.yeo == 1) { 
+if (use.yeo == 1) {
   yeo7 <- yeo7_community(agg.g)
-  
+
   allg_noneg <- assign_communities(allg_noneg, yeo7, "community")
   allg_density <- assign_communities(allg_density, yeo7, "community")
-  allg_density_fc <- assign_communities(allg_density_fc, yeo7, "community")
-  
+  allg_density_fc <- assign_communities(allg_density_fc, yeo7, "mod")
+
   membership_df <- data.frame(node = rownames(do.call(cbind,yeo7)), membership = as.numeric(do.call(cbind,yeo7)[,1]))
-  
+
   community.names <- data.frame(node = rownames(do.call(cbind,yeo7)), membership = as.numeric(do.call(cbind,yeo7)[,1]),
                                 community.name = mapvalues(membership_df$membership, from = c("1","2","3","4","5","6","7"), to = c("VIS", "SOMMOT", "DORSATTN", "SALVENTATTN", "LIMBIC", "FPN", "DMN")))
 } else {
@@ -105,13 +105,13 @@ if (use.yeo == 1) {
 if (!conn_method == "dens.clime_partial") {
   if (thresh == "fc") {
     #compute global metrics on BINARY fc-thresholded graphs
-    globalmetrics_dthresh <- compute_global_metrics(allg_density_fc, allowCache=FALSE, community_attr="community") #community_attr determines how global/nodal statistics that include community are computed
+    globalmetrics_dthresh <- compute_global_metrics(allg_density_fc, allowCache=TRUE, community_attr="community") #community_attr determines how global/nodal statistics that include community are computed
     #compute nodal metrics on BINARY fc-thresholded graphs
-    nodalmetrics_dthresh <- compute_nodal_metrics(allg_density_fc, allowCache=FALSE, community_attr="community") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
-    
+    nodalmetrics_dthresh <- compute_nodal_metrics(allg_density_fc, allowCache=TRUE, community_attr="community") #this returns allmetrics.nodal as nested list and allmetrics.nodal.df as flat data.frame
+
     #nodalmetrics_dthresh$allmetrics.nodal.df$density <- rep(rep(rs_desired_log, each = 422),length(allg)) #should be superseded by adding this attribute to each graph in compute_nodal_metrics
     allmetrics.nodal.df <- nodalmetrics_dthresh$allmetrics.nodal.df
-    
+
     globalmetrics_dthresh.df <- globalmetrics_dthresh$allmetrics.global.df
     globalmetrics_dthresh.df$density <- rep(rs_desired_log, length(allg))
 
@@ -126,17 +126,18 @@ if (!conn_method == "dens.clime_partial") {
 
     #check that we hit the target
     globalmetrics_dthresh.df %>% group_by(target_density) %>% dplyr::summarize(mean(edge_density), median(edge_density)) #yep
-    
-    #nodalmetrics_dthresh$allmetrics.nodal.df$density <- rep(rep(densities_desired, each = 422),length(allg)) 
+
+    #nodalmetrics_dthresh$allmetrics.nodal.df$density <- rep(rep(densities_desired, each = 422),length(allg))
     allmetrics.nodal.df <- nodalmetrics_dthresh$allmetrics.nodal.df
   }
 } else {
   globalmetrics_dthresh <- compute_global_metrics(allg_density, allowCache = TRUE, community_attr = "community")
-  nodalmetrics_dthresh <- compute_nodal_metrics(allg_density, allowCache=TRUE, community_attr="community", weighted = FALSE) 
+  nodalmetrics_dthresh <- compute_nodal_metrics(allg_density, allowCache=TRUE, community_attr="community", weighted = FALSE)
 }
 
 #couple of sanity checks
 qplot(allmetrics.nodal.df$eigen.cent)
+dev.off()
 ggplot(allmetrics.nodal.df, aes(x=degree)) + geom_histogram() + facet_wrap(~wthresh)
 #ggplot(allmetrics.nodal.df, aes(x=degree)) + geom_histogram() + facet_wrap(~target_density)
 
@@ -149,30 +150,30 @@ source(file.path(basedir, "scripts", "transform_graph_metrics.R"))
 if (data.reduce == "fa"){
   if(thresh == "fc"){
     ##nodal
-    toanalyze_thresh <- reduce_centrality_fa(allmetrics.nodal.df, 
-                                             reducemetrics = reducemetrics, 
-                                             den = 0, 
-                                             allowCache =FALSE, 
+    toanalyze_thresh <- reduce_centrality_fa(allmetrics.nodal.df,
+                                             reducemetrics = reducemetrics,
+                                             den = 0,
+                                             allowCache =FALSE,
                                              browse = TRUE)
-    
+
     #toanalyze_thresh <- reduce_centrality_fa(allmetrics.nodal.df, reducemetrics = reducemetrics, den = 0, allowCache = TRUE, browse = FALSE)
     for(i in 1:length(toanalyze_thresh)) assign(names(toanalyze_thresh)[i], toanalyze_thresh[[i]])
-    
+
     toanalyze <- left_join(toanalyze, membership_df, by = "node")
     toanalyze$id <- as.character(toanalyze$id)
-    
-    fa.metrics <- colnames(dplyr::select(toanalyze, -id, -node, -BPD, -Age, -membership))  
-    
-    #heatmap_FA(faout)
-    
-   
+
+    fa.metrics <- colnames(dplyr::select(toanalyze, -id, -node, -BPD, -Age, -membership))
+
+    heatmap_FA(faout)
+
+
   } else{
     toanalyze <- reduce_centrality_fa(allmetrics.nodal.df, reducemetrics = reducemetrics, allowCache = TRUE, weighted = FALSE, browse = FALSE, fc = FALSE)
-    
+
     toanalyze <- left_join(toanalyze, membership_df, by = "node")
     toanalyze$id <- as.character(toanalyze$id)
-    
-    fa.metrics <- colnames(dplyr::select(toanalyze, -id, -node, -BPD, -Age, -membership))  
+
+    fa.metrics <- colnames(dplyr::select(toanalyze, -id, -node, -BPD, -Age, -membership))
   }
 } else {
   #run PCA across metrics and densities and pull scores into toanalyze
@@ -213,5 +214,6 @@ plot_significant_ixn(signod.lm, toanalyze = toanalyze)
 ###Interrogate nodes of interest
 # outputdir.interr <- paste0(basedir, "/BNV_nodefiles/interrogate_node_edgefiles/")
 # a <- interrogate_node(allmats, subj_info, 422, t.stat = 2, outputdir = outputdir.interr)
+
 
 

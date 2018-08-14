@@ -15,7 +15,7 @@ compute_global_metrics <- function(graphs, ncpus=4, allowCache=TRUE, community_a
       on.exit(try(stopCluster(clusterobj))) #shutdown cluster when function exits (either normally or crash)
       
       ##compute global metrics
-      globmetrics_weighted <- foreach(subj=graphs, .packages = c("igraph", "brainGraph"), .export=c("calcGraph_global")) %dopar% {
+      globmetrics_weighted <- foreach(subj=graphs, .packages = c("igraph"), .export=c("calcGraph_global")) %dopar% {
         glist <- calcGraph_global(subj, community_attr = community_attr)
       }
       #flatten metrics down to a data.frame
@@ -39,7 +39,7 @@ compute_global_metrics <- function(graphs, ncpus=4, allowCache=TRUE, community_a
     on.exit(try(stopCluster(clusterobj))) #shutdown cluster when function exits (either normally or crash)
 
     ##compute global metrics 
-    allmetrics.global <- foreach(subj=graphs, .packages = c("igraph", "brainGraph"), .export=c("calcGraph_global", "densities_desired", "rs_desired_log", "thresh")) %dopar% {
+    allmetrics.global <- foreach(subj=graphs, .packages = c("igraph"), .export=c("calcGraph_global", "densities_desired", "rs_desired_log", "thresh")) %dopar% {
       #for (subj in graphs) { #put here for more fine-grained debugging
       dl <- lapply(subj, function(dgraph) {
         glist <- calcGraph_global(dgraph, community_attr=community_attr) #this will work for both weighted and unweighted graphs, right now modularity weighted components set to NULL but can change if desired. 
